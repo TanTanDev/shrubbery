@@ -5,6 +5,7 @@ pub mod branch;
 pub mod shape;
 pub mod shrubbery;
 pub mod vec;
+pub mod voxel;
 
 pub mod prelude {
     pub use crate::shrubbery::Shrubbery;
