@@ -1,5 +1,7 @@
 use glam::Vec3;
 
+use crate::leaf_classifier::LeafClassifier;
+
 pub struct Branch {
     pub pos: Vec3,
     pub parent_index: Option<usize>,
@@ -32,8 +34,11 @@ impl Branch {
     }
 
     // no child branches: is leaf
-    pub fn is_leaf(&self) -> bool {
-        self.child_count == 0
+    pub fn is_leaf(&self, classifier: &LeafClassifier) -> bool {
+        match classifier {
+            LeafClassifier::LastBranch => self.child_count == 0,
+            LeafClassifier::NonRootBranch => self.generation != 0,
+        }
     }
 
     pub fn reset(&mut self) {

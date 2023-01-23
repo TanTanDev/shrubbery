@@ -4,7 +4,7 @@ use crate::{
     vec::Vector, voxel::BranchSizeSetting,
 };
 
-use glam::{ivec3, vec3, IVec3, Vec3};
+use glam::{ivec3, vec2, vec3, IVec3, Vec2, Vec3};
 
 pub struct Shrubbery {
     pub branches: Vec<Branch>,
@@ -41,6 +41,50 @@ impl Shrubbery {
             min_bounds: Vec3::splat(0f32),
             max_bounds: Vec3::splat(0f32),
         }
+    }
+
+    pub fn post_process_gravity(&mut self, max_gravity: f32) {
+        let plane_half_size = self.get_plane_half_size();
+        for branch in self.branches.iter_mut() {
+            // branch.
+            let branch_plane = vec2(branch.pos.x, branch.pos.z);
+            let root = Vec2::ZERO;
+            let dist_to_root = branch_plane.distance(root);
+
+            let weight = (dist_to_root / plane_half_size);
+            branch.pos.y -= weight;
+            // let dist_from_root = vec3(b)
+        }
+    }
+
+    pub fn post_process_spin(&mut self, max_spin: f32) {
+        let plane_half_size = self.get_plane_half_size();
+        for branch in self.branches.iter_mut() {
+            // branch.
+            let branch_xz = vec2(branch.pos.x, branch.pos.z);
+            let root = Vec2::ZERO;
+            let dist_to_root = branch_xz.distance(root);
+            let weight = dist_to_root / plane_half_size;
+
+            let y_weight = (branch.pos.y * 0.3).cos() * 0.5 + 0.5;
+
+            let new_xz = rotate_point(branch_xz, max_spin * weight * y_weight);
+            branch.pos.x = new_xz.x;
+            branch.pos.z = new_xz.y;
+
+            // branch.pos.y -= weight;
+            // let dist_from_root = vec3(b)
+        }
+    }
+
+    pub fn get_plane_half_size(&self) -> f32 {
+        let size = self.get_bounding_size();
+        (size.x.max(size.z) as f32 * 0.5).ceil()
+    }
+
+    pub fn get_bounding_size(&self) -> IVec3 {
+        let (min_bounds, max_bounds) = self.get_bounds();
+        max_bounds - min_bounds
     }
 
     pub fn get_bounds(&self) -> (IVec3, IVec3) {
@@ -226,6 +270,15 @@ impl Shrubbery {
 //     let cd = area / ab.length();
 //     cd
 // }
+
+fn rotate_point(pos: Vec2, radians: f32) -> Vec2 {
+    let (cos_theta, sin_theta) = (radians.cos(), radians.sin());
+    let out = vec2(
+        cos_theta * pos.x - sin_theta * pos.y,
+        sin_theta * pos.x + cos_theta * pos.y,
+    );
+    out
+}
 
 fn dist_to_line(pos: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
     // x2 = line_end
