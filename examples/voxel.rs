@@ -26,7 +26,7 @@ fn make_shrubbery() -> Shrubbery {
         },
         AttractorGeneratorSettings::default(),
     );
-    shrubbery.spawn_leaves(
+    shrubbery.spawn_attractors_from_shape(
         vec3(0., 5. + 8.0, 0.),
         BoxShape {
             x: 15.0,
