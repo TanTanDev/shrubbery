@@ -43,8 +43,7 @@ fn main() {
     window.set_light(Light::StickToCamera);
     let mut shrubbery = make_shrubbery();
 
-    let mut voxels = vec![];
-
+    // reference kiss3d box models so we can remove them
     let mut vis_nodes = vec![];
 
     let settings = VoxelizeSettings {
@@ -57,45 +56,23 @@ fn main() {
         }),
         leaf_settings: LeafSetting::Shape(LeafShape::Sphere { r: 2.7 }),
     };
+
     while window.render() {
         for event in window.events().iter() {
             match event.value {
                 WindowEvent::Key(button, Action::Press, _) => {
-                    if button == Key::R {
-                        shrubbery = make_shrubbery();
-                        vis_nodes
-                            .iter_mut()
-                            .for_each(|mut n| window.remove_node(&mut n));
+                    // flag to indicate rebuilding the voxels
+                    // process button input: it's dirty
+                    let mut dirty = true;
+                    match button {
+                        Key::R => shrubbery = make_shrubbery(),
+                        Key::G => shrubbery.post_process_gravity(1.0),
+                        Key::T => shrubbery.post_process_spin(3.14 * 0.5),
+                        Key::N => shrubbery.grow(),
+                        _ => dirty = false,
                     }
-                    if button == Key::G {
-                        shrubbery.post_process_gravity(1.0);
-                        build_voxels(
-                            &mut shrubbery,
-                            &settings,
-                            &mut vis_nodes,
-                            &mut window,
-                            &mut voxels,
-                        );
-                    }
-                    if button == Key::T {
-                        shrubbery.post_process_spin(3.14 * 0.5);
-                        build_voxels(
-                            &mut shrubbery,
-                            &settings,
-                            &mut vis_nodes,
-                            &mut window,
-                            &mut voxels,
-                        );
-                    }
-                    if button == Key::N {
-                        shrubbery.grow();
-                        build_voxels(
-                            &mut shrubbery,
-                            &settings,
-                            &mut vis_nodes,
-                            &mut window,
-                            &mut voxels,
-                        );
+                    if dirty {
+                        build_voxels(&mut shrubbery, &settings, &mut vis_nodes, &mut window);
                     }
                 }
                 _ => {}
@@ -111,11 +88,10 @@ fn main() {
             let from = kiss3d::nalgebra::Point3::new(branch.pos.x, branch.pos.y, branch.pos.z);
             let to = kiss3d::nalgebra::Point3::new(p_pos.x, p_pos.y, p_pos.z);
 
-            let is_leaf = if let LeafSetting::BranchIsLeaf(classifier) = &settings.leaf_settings {
-                branch.is_leaf(classifier)
-            } else {
-                false
-            };
+            let mut is_leaf = false;
+            if let LeafSetting::BranchIsLeaf(classifier) = &settings.leaf_settings {
+                is_leaf = branch.is_leaf(classifier);
+            }
             let color = if is_leaf {
                 kiss3d::nalgebra::Point3::new(0.0, 1.0, 0.0)
             } else {
@@ -138,7 +114,6 @@ fn build_voxels(
     settings: &VoxelizeSettings,
     vis_nodes: &mut Vec<kiss3d::scene::SceneNode>,
     window: &mut Window,
-    voxels: &mut Vec<(IVec3, VoxelType)>,
 ) {
     let mut gen_voxels = voxelize(shrubbery, settings);
     drop_leaves(&mut gen_voxels, 0.1);
@@ -146,8 +121,8 @@ fn build_voxels(
     vis_nodes
         .iter_mut()
         .for_each(|mut n| window.remove_node(&mut n));
-    *voxels = gen_voxels;
-    for (pos, voxel) in voxels.iter() {
+
+    for (pos, voxel) in gen_voxels.iter() {
         let c_s = 1.0;
         let mut c = window.add_cube(c_s, c_s, c_s);
         c.append_translation(&kiss3d::nalgebra::Translation3::new(
