@@ -5,6 +5,7 @@ use crate::{
 use glam::*;
 use rand::Rng;
 
+/// A shape to spawn attractors inside
 pub trait Shape {
     fn generate(
         &self,
@@ -15,6 +16,7 @@ pub trait Shape {
     );
 }
 
+/// x,y,z is total size
 pub struct BoxShape {
     pub x: f32,
     pub y: f32,
@@ -64,6 +66,5 @@ impl Shape for BoxShape {
                 }
             }
         }
-        println!("leaf nodes {:?}", attractors.len());
     }
 }

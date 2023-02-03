@@ -14,6 +14,7 @@ pub enum LeafShape {
     Sphere { r: f32 },
 }
 
+/// what method to use to classify leaves
 pub enum LeafSetting {
     // generate no leaves
     None,

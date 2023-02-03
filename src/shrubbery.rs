@@ -1,11 +1,15 @@
 use crate::{
-    algorithm_settings::AlgorithmSettings, attractor::Attractor,
-    attractor_generator_settings::AttractorGeneratorSettings, branch::Branch, shape::Shape,
-    vec::Vector, voxel::BranchSizeSetting,
+    algorithm_settings::AlgorithmSettings,
+    attractor::Attractor,
+    attractor_generator_settings::AttractorGeneratorSettings,
+    branch::Branch,
+    math_utils::{dist_to_line, rotate_point},
+    shape::Shape,
 };
 
-use glam::{ivec3, vec2, vec3, IVec3, Vec2, Vec3};
+use glam::{ivec3, vec2, IVec3, Vec2, Vec3};
 
+/// a tree/bush, pressentation that you can grow and modify through post processing effect
 pub struct Shrubbery {
     pub branches: Vec<Branch>,
     pub attractors: Vec<Attractor>,
@@ -43,50 +47,19 @@ impl Shrubbery {
         }
     }
 
-    pub fn post_process_gravity(&mut self, max_gravity: f32) {
-        let plane_half_size = self.get_plane_half_size();
-        for branch in self.branches.iter_mut() {
-            // branch.
-            let branch_plane = vec2(branch.pos.x, branch.pos.z);
-            let root = Vec2::ZERO;
-            let dist_to_root = branch_plane.distance(root);
-
-            let weight = (dist_to_root / plane_half_size);
-            branch.pos.y -= weight;
-            // let dist_from_root = vec3(b)
-        }
-    }
-
-    pub fn post_process_spin(&mut self, max_spin: f32) {
-        let plane_half_size = self.get_plane_half_size();
-        for branch in self.branches.iter_mut() {
-            // branch.
-            let branch_xz = vec2(branch.pos.x, branch.pos.z);
-            let root = Vec2::ZERO;
-            let dist_to_root = branch_xz.distance(root);
-            let weight = dist_to_root / plane_half_size;
-
-            let y_weight = (branch.pos.y * 0.3).cos() * 0.5 + 0.5;
-
-            let new_xz = rotate_point(branch_xz, max_spin * weight * y_weight);
-            branch.pos.x = new_xz.x;
-            branch.pos.z = new_xz.y;
-
-            // branch.pos.y -= weight;
-            // let dist_from_root = vec3(b)
-        }
-    }
-
+    /// return the half size bounds, imagine a quad on the xz axis
     pub fn get_plane_half_size(&self) -> f32 {
         let size = self.get_bounding_size();
         (size.x.max(size.z) as f32 * 0.5).ceil()
     }
 
+    /// rturns size of the bounding box
     pub fn get_bounding_size(&self) -> IVec3 {
         let (min_bounds, max_bounds) = self.get_bounds();
         max_bounds - min_bounds
     }
 
+    /// returns the min x,y,z and max x,y,z position
     pub fn get_bounds(&self) -> (IVec3, IVec3) {
         (
             ivec3(
@@ -102,27 +75,17 @@ impl Shrubbery {
         )
     }
 
+    // expand bounding if branch_pos is outside
     pub fn update_bound(min_bounds: &mut Vec3, max_bounds: &mut Vec3, branch_pos: Vec3) {
-        if branch_pos.x < min_bounds.x {
-            min_bounds.x = branch_pos.x;
-        }
-        if branch_pos.x > max_bounds.x {
-            max_bounds.x = branch_pos.x;
-        }
-        if branch_pos.y < min_bounds.y {
-            min_bounds.y = branch_pos.y;
-        }
-        if branch_pos.y > max_bounds.y {
-            max_bounds.y = branch_pos.y;
-        }
-        if branch_pos.z < min_bounds.z {
-            min_bounds.z = branch_pos.z;
-        }
-        if branch_pos.z > max_bounds.z {
-            max_bounds.z = branch_pos.z;
-        }
+        min_bounds.x = min_bounds.x.min(branch_pos.x);
+        min_bounds.y = min_bounds.y.min(branch_pos.y);
+        min_bounds.z = min_bounds.z.min(branch_pos.z);
+        max_bounds.x = max_bounds.x.max(branch_pos.x);
+        max_bounds.y = max_bounds.y.max(branch_pos.y);
+        max_bounds.z = max_bounds.z.max(branch_pos.z);
     }
 
+    /// spawn initial branches based on settings.
     pub fn build_trunk(&mut self) {
         let mut root_end_pos = self.branches[0].pos;
         let dir = self.branches[0].dir;
@@ -132,10 +95,6 @@ impl Shrubbery {
         'a: for _ in 0..max_iterations {
             consumed_height += self.settings.branch_len;
             root_end_pos += self.settings.branch_len * dir;
-            // root_end_pos = dir;
-            // if consumed_height > self.settings.trunk_height {
-            //     break;
-            // }
             for leaf in self.attractors.iter() {
                 let dist = root_end_pos.distance(leaf.pos);
                 if dist < self.settings.leaf_attraction_dist {
@@ -161,12 +120,12 @@ impl Shrubbery {
         }
     }
 
+    /// using space colonization algorithm, spawn new branches
     pub fn grow(&mut self) {
-        // find closest
-        // pull branch directions towards leafs
         for leaf in self.attractors.iter_mut() {
             let mut closest_branch: Option<usize> = None;
-            let mut closest_dist = 999999999.;
+            let mut closest_dist = 999999.;
+            // find shortest signed distance of all branches
             for (branch_index, branch) in self.branches.iter_mut().enumerate() {
                 let dist = leaf.pos.distance(branch.pos);
                 // is this branch to close to the leaf, discard it
@@ -175,10 +134,11 @@ impl Shrubbery {
                     closest_branch = None;
                     break;
                 }
-                // to far away to branch to
+                // to far away to be attracted towards
                 if dist > self.settings.leaf_attraction_dist {
                     continue;
                 }
+                // record closest branch
                 if dist < closest_dist {
                     closest_branch = Some(branch_index);
                     closest_dist = dist;
@@ -196,6 +156,7 @@ impl Shrubbery {
         // remove reached leaves
         self.attractors.retain(|leaf| !leaf.reached);
 
+        // spawn new branches using previous calculations
         let mut to_add = vec![];
         for (branch_index, branch) in self
             .branches
@@ -213,7 +174,8 @@ impl Shrubbery {
         self.branches.extend(to_add);
     }
 
-    pub fn spawn_leaves<TShape>(&mut self, pos: Vec3, shape: TShape)
+    /// spawn particles inside provided shape, based on settings
+    pub fn spawn_attractors_from_shape<TShape>(&mut self, pos: Vec3, shape: TShape)
     where
         TShape: Shape,
     {
@@ -225,6 +187,38 @@ impl Shrubbery {
         );
     }
 
+    /// reduce y position of branches, weighted by dist to 0,0 xz.
+    pub fn post_process_gravity(&mut self, gravity: f32) {
+        let plane_half_size = self.get_plane_half_size();
+        for branch in self.branches.iter_mut() {
+            // branch.
+            let branch_plane = vec2(branch.pos.x, branch.pos.z);
+            let root = Vec2::ZERO;
+            let dist_to_root = branch_plane.distance(root);
+
+            let weight = dist_to_root / plane_half_size;
+            branch.pos.y -= weight * gravity;
+        }
+    }
+
+    /// rotate branch x,z positions around origin: 0,0
+    pub fn post_process_spin(&mut self, spin_amount: f32) {
+        let plane_half_size = self.get_plane_half_size();
+        for branch in self.branches.iter_mut() {
+            let branch_xz = vec2(branch.pos.x, branch.pos.z);
+            let root = Vec2::ZERO;
+            let dist_to_root = branch_xz.distance(root);
+            let weight = dist_to_root / plane_half_size;
+
+            let y_weight = (branch.pos.y * 0.3).cos() * 0.5 + 0.5;
+
+            let new_xz = rotate_point(branch_xz, spin_amount * weight * y_weight);
+            branch.pos.x = new_xz.x;
+            branch.pos.z = new_xz.y;
+        }
+    }
+
+    /// returns (distance, index of branch)
     pub fn distance_to_branch(&self, pos: Vec3) -> (f32, usize) {
         let mut closest = f32::MAX;
         let mut index = 0;
@@ -234,67 +228,11 @@ impl Shrubbery {
             };
 
             let d = dist_to_line(pos, self.branches[parent_index].pos, branch.pos);
-            // let d = dist_to_line(pos, branch.pos, self.branches[parent_index].pos);
             if d < closest {
                 closest = d;
                 index = i;
             }
-            // closest = closest.min(d);
         }
         (closest, index)
-        // self.branches
-        //     .iter()
-        //     .map(|branch| branch.pos.distance(pos))
-        //     .reduce(f32::min)
-        //     .unwrap_or(0f32)
     }
-}
-
-// fn dist_to_line(pos: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
-//     // x2 = line_end
-//     // x1 = line_start
-//     // x0 = pos
-
-//     // Vec3::cross(line_end - line_start, line_start - pos).length() / (line_end - line_start).length()
-//     ((line_end - line_start) * (line_start - pos)).length() / (line_end - line_start).length()
-// }
-
-// fn dist_to_line(pos: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
-//     // x2 = line_end
-//     // x1 = line_start
-//     // x0 = pos
-//     let ab = line_end - line_start;
-//     // let ac = line_start - pos;
-//     let ac = pos - line_start;
-//     let area = Vec3::cross(ab, ac).length();
-//     let cd = area / ab.length();
-//     cd
-// }
-
-fn rotate_point(pos: Vec2, radians: f32) -> Vec2 {
-    let (cos_theta, sin_theta) = (radians.cos(), radians.sin());
-    let out = vec2(
-        cos_theta * pos.x - sin_theta * pos.y,
-        sin_theta * pos.x + cos_theta * pos.y,
-    );
-    out
-}
-
-fn dist_to_line(pos: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
-    // x2 = line_end
-    // x1 = line_start
-    // x0 = pos
-    let ab = line_end - line_start;
-    let ac = pos - line_start;
-    if ac.dot(ab) <= 0.0 {
-        return ac.length();
-    }
-    let bv = pos - line_end;
-    if bv.dot(ab) >= 0.0 {
-        return bv.length();
-    }
-    ab.cross(ac).length() / ab.length()
-    // let area = Vec3::cross(ab, ac).length();
-    // let cd = area / ab.length();
-    // cd
 }

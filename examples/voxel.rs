@@ -1,4 +1,3 @@
-use shrubbery::leaf_classifier::LeafClassifier;
 use shrubbery::shape::BoxShape;
 use shrubbery::voxel::{
     drop_leaves, voxelize, BranchRootSizeIncreaser, BranchSizeSetting, LeafSetting, LeafShape,
@@ -15,18 +14,12 @@ use kiss3d::event::{Action, Key, WindowEvent};
 use kiss3d::light::Light;
 use kiss3d::window::Window;
 
-// 3-6 trunk height
-// shape 3-10
-// travel dist: 1.0
-
 fn make_shrubbery() -> Shrubbery {
     let mut shrubbery = Shrubbery::new(
         vec3(0., 0., 0.),
         vec3(0., 1., 0.),
         AlgorithmSettings {
-            // kill_distance: 5.0,
             kill_distance: 2.0,
-            // branch_len: 4.0,
             branch_len: 2.0,
             leaf_attraction_dist: 6.0,
             min_trunk_height: 3.0,
@@ -57,15 +50,12 @@ fn main() {
     let settings = VoxelizeSettings {
         branch_size_setting: BranchSizeSetting::Generation {
             distances: vec![1.5, 1.0, 1.0, 1.0],
-            // distances: vec![3.0, 3.0, 3.0, 3.0],
         },
-        // branch_root_size_increaser: None,
         branch_root_size_increaser: Some(BranchRootSizeIncreaser {
             height: 2.0,
             additional_size: 2.0,
         }),
-        leaf_settings: LeafSetting::None,
-        // leaf_settings: LeafSetting::Shape(LeafShape::Sphere { r: 2.7 }), // leaf_settings: LeafSetting::BranchIsLeaf(LeafClassifier::NonRootBranch),
+        leaf_settings: LeafSetting::Shape(LeafShape::Sphere { r: 2.7 }),
     };
     while window.render() {
         for event in window.events().iter() {
@@ -157,7 +147,7 @@ fn build_voxels(
         .iter_mut()
         .for_each(|mut n| window.remove_node(&mut n));
     *voxels = gen_voxels;
-    for ((pos, voxel)) in voxels.iter() {
+    for (pos, voxel) in voxels.iter() {
         let c_s = 1.0;
         let mut c = window.add_cube(c_s, c_s, c_s);
         c.append_translation(&kiss3d::nalgebra::Translation3::new(
