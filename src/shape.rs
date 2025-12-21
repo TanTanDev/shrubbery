@@ -3,7 +3,7 @@ use crate::{
     attractor_generator_settings::AttractorGeneratorSettings,
 };
 use glam::*;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 
 /// A shape to spawn attractors inside
 pub trait Shape {
@@ -47,18 +47,18 @@ impl Shape for BoxShape {
         );
 
         let scatter_distance = ideal_spacing * 0.5;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(algorithm_settings.seed);
 
         for x in 0..x_l {
             for y in 0..x_y {
                 for z in 0..x_z {
                     let jitter = vec3(
                         x as f32 * ideal_spacing
-                            + rng.gen_range(-scatter_distance..scatter_distance),
+                            + rng.random_range(-scatter_distance..scatter_distance),
                         y as f32 * ideal_spacing
-                            + rng.gen_range(-scatter_distance..scatter_distance),
+                            + rng.random_range(-scatter_distance..scatter_distance),
                         z as f32 * ideal_spacing
-                            + rng.gen_range(-scatter_distance..scatter_distance),
+                            + rng.random_range(-scatter_distance..scatter_distance),
                     );
                     attractors.push(Attractor::new(
                         pos + start_pos + center_shape_offset + jitter,

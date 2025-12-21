@@ -1,7 +1,8 @@
 use glam::{ivec3, vec3, IVec3, Vec3};
-use rand::{thread_rng, Rng};
+use rand::{Rng, SeedableRng};
 
 use crate::{leaf_classifier::LeafClassifier, shrubbery::Shrubbery};
+const EPSILON: f32 = 0.0001;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VoxelType {
@@ -43,7 +44,7 @@ pub struct VoxelizeSettings {
     pub branch_root_size_increaser: Option<BranchRootSizeIncreaser>,
 }
 
-pub fn drop_leaves(voxels: &mut Vec<(IVec3, VoxelType)>, procentage: f32) {
+pub fn drop_leaves(voxels: &mut Vec<(IVec3, VoxelType)>, procentage: f32, seed: u64) {
     let mut branch_indices = voxels
         .iter()
         .enumerate()
@@ -53,8 +54,9 @@ pub fn drop_leaves(voxels: &mut Vec<(IVec3, VoxelType)>, procentage: f32) {
 
     let to_drop = (branch_indices.len() as f32 * procentage) as usize;
     let mut to = Vec::with_capacity(to_drop);
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
     for _ in 0..to_drop {
-        let branch_indicies_i = thread_rng().gen_range(0..branch_indices.len());
+        let branch_indicies_i = rng.random_range(0..branch_indices.len());
         let index = branch_indices[branch_indicies_i];
         branch_indices.remove(branch_indicies_i);
         to.push(index);
@@ -66,18 +68,17 @@ pub fn drop_leaves(voxels: &mut Vec<(IVec3, VoxelType)>, procentage: f32) {
     }
 }
 
-///
+/// construct voxel positions based upon tree
 pub fn voxelize(shrubbery: &Shrubbery, settings: &VoxelizeSettings) -> Vec<(IVec3, VoxelType)> {
     let (min_bounds, max_bounds) = shrubbery.get_bounds();
     let mut size = max_bounds - min_bounds;
-    // I use half the size to go -half_size -> half_size
-    size.x = (size.x as f32 * 0.5).ceil() as i32;
-    size.z = (size.z as f32 * 0.5).ceil() as i32;
+    size.x = (size.x + 1) / 2;
+    size.z = (size.z + 1) / 2;
 
     // apply extra padding in size from leaves
     if let LeafSetting::Shape(leaf_shape) = &settings.leaf_settings {
         let padding: i32 = match leaf_shape {
-            LeafShape::Sphere { r } => r.ceil() as i32,
+            LeafShape::Sphere { r } => r.ceil() as i32 + 1,
         };
         // todo: include root size into padding
         size += IVec3::splat(padding);
@@ -102,12 +103,13 @@ fn process_voxel(
     settings: &VoxelizeSettings,
     voxels: &mut Vec<(IVec3, VoxelType)>,
 ) {
-    let sample_pos = vec3(pos.x as f32, pos.y as f32, pos.z as f32);
+    let sample_pos = vec3(pos.x as f32 + 0.5, pos.y as f32 + 0.5, pos.z as f32 + 0.5);
 
     // leaf shape
     if let LeafSetting::Shape(leaf_shape) = &settings.leaf_settings {
         if generate_leaf(
             sample_pos,
+            pos,
             &shrubbery,
             voxels,
             leaf_shape,
@@ -128,10 +130,10 @@ fn process_voxel(
         }
     };
     if let Some(increaser) = &settings.branch_root_size_increaser {
-        let h_m = 1.0 - (sample_pos.y / increaser.height).min(1.0);
+        let h_m = 1.0 - (sample_pos.y / increaser.height.max(0.001)).min(1.0);
         size += h_m * increaser.additional_size;
     }
-    if dist_to_branch < size {
+    if dist_to_branch < size + EPSILON {
         let closest_branch = &shrubbery.branches[closest_branch_index];
         let is_leaf = if let LeafSetting::BranchIsLeaf(classifier) = &settings.leaf_settings {
             closest_branch.is_leaf(classifier)
@@ -156,6 +158,7 @@ fn process_voxel(
 
 fn generate_leaf(
     pos: Vec3,
+    grid_pos: IVec3,
     shrubbery: &Shrubbery,
     voxels: &mut Vec<(IVec3, VoxelType)>,
     leaf_shape: &LeafShape,
@@ -171,14 +174,7 @@ fn generate_leaf(
         match leaf_shape {
             LeafShape::Sphere { r } => {
                 if is_inside_sphere(pos, leaf_pos, *r) {
-                    voxels.push((
-                        ivec3(
-                            pos.x.ceil() as i32,
-                            pos.y.ceil() as i32,
-                            pos.z.ceil() as i32,
-                        ),
-                        VoxelType::Greenery,
-                    ));
+                    voxels.push((grid_pos, VoxelType::Greenery));
                     // quick exit, we found greenery at this position
                     return true;
                 }
@@ -189,5 +185,5 @@ fn generate_leaf(
 }
 
 fn is_inside_sphere(pos: Vec3, sphere_pos: Vec3, radius: f32) -> bool {
-    pos.distance(sphere_pos) <= radius
+    pos.distance(sphere_pos) <= radius + EPSILON
 }

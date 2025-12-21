@@ -1,7 +1,9 @@
+use kiss3d::camera::ArcBall;
+use kiss3d::nalgebra::Point3;
 use shrubbery::shape::BoxShape;
 use shrubbery::voxel::{
-    drop_leaves, voxelize, BranchRootSizeIncreaser, BranchSizeSetting, LeafSetting, LeafShape,
-    VoxelType, VoxelizeSettings,
+    BranchRootSizeIncreaser, BranchSizeSetting, LeafSetting, LeafShape, VoxelType,
+    VoxelizeSettings, drop_leaves, voxelize,
 };
 use shrubbery::{
     algorithm_settings::AlgorithmSettings,
@@ -23,6 +25,7 @@ fn make_shrubbery() -> Shrubbery {
             branch_len: 2.0,
             leaf_attraction_dist: 6.0,
             min_trunk_height: 3.0,
+            seed: 0,
         },
         AttractorGeneratorSettings::default(),
     );
@@ -38,7 +41,8 @@ fn make_shrubbery() -> Shrubbery {
     shrubbery
 }
 
-fn main() {
+#[kiss3d::main]
+async fn main() {
     let mut window = Window::new("that's a fine shrubbery");
     window.set_light(Light::StickToCamera);
     let mut shrubbery = make_shrubbery();
@@ -57,7 +61,10 @@ fn main() {
         leaf_settings: LeafSetting::Shape(LeafShape::Sphere { r: 2.7 }),
     };
 
-    while window.render() {
+    let eye = Point3::new(-40f32, 20f32, -5f32);
+    let at = Point3::origin();
+    let mut camera = ArcBall::new(eye, at);
+    while window.render_with_camera(&mut camera).await {
         for event in window.events().iter() {
             match event.value {
                 WindowEvent::Key(button, Action::Press, _) => {
@@ -116,7 +123,7 @@ fn build_voxels(
     window: &mut Window,
 ) {
     let mut gen_voxels = voxelize(shrubbery, settings);
-    drop_leaves(&mut gen_voxels, 0.1);
+    drop_leaves(&mut gen_voxels, 0.1, 0);
 
     vis_nodes
         .iter_mut()

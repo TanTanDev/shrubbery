@@ -1,5 +1,6 @@
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AlgorithmSettings {
+    pub seed: u64,
     pub kill_distance: f32,
     pub branch_len: f32,
     pub leaf_attraction_dist: f32,
@@ -13,6 +14,7 @@ impl Default for AlgorithmSettings {
             branch_len: 0.3,
             leaf_attraction_dist: 5.,
             min_trunk_height: 1.,
+            seed: 0,
         }
     }
 }
