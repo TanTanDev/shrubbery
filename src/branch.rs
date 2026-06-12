@@ -6,17 +6,18 @@ pub struct Branch {
     pub pos: Vec3,
     pub parent_index: Option<usize>,
     pub dir: Vec3,
+    /// todo: remove? might not be needed
     pub original_dir: Vec3,
-    // how many attractors are pulling this node
+    /// how many attractors are pulling this node
     pub attractors_count: i32,
-    // how man branchings are from this node
+    /// how many children branches this branch has
     pub child_count: i32,
-    // todo: explain
+    /// what iteration this branch was made
     pub generation: i32,
 }
 
 impl Branch {
-    // make a new branch based on this branch calculated growth direciton
+    /// make a new branch based on this branch calculated growth direciton
     pub fn next(&self, index: usize, branch_len: f32, is_new_generation: bool) -> Self {
         let mut generation = self.generation;
         if is_new_generation {
@@ -33,7 +34,7 @@ impl Branch {
         }
     }
 
-    // no child branches: is leaf
+    /// no child branches: is leaf
     pub fn is_leaf(&self, classifier: &LeafClassifier) -> bool {
         match classifier {
             LeafClassifier::LastBranch => self.child_count == 0,

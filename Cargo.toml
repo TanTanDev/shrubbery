@@ -1,14 +1,21 @@
 [package]
 name = "shrubbery"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["serde", "bevy"]
+serde = ["dep:serde", "glam/serde"]
+bevy = ["dep:bevy"]
 
 [dependencies]
-glam = "0.30"
-rand = "0.9"
-rand_chacha = "0.9"
+glam = "0.33"
+rand = "0.10"
+rand_chacha = "0.10"
+thiserror = "2.0"
+
+bevy = {version = "0.17.3", features = ["file_watcher"], optional = true}
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true, }
 
 [dev-dependencies]
 kiss3d = "0.37"

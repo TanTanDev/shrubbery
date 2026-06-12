@@ -1,9 +1,10 @@
 use crate::{
-    algorithm_settings::AlgorithmSettings, attractor::Attractor,
-    attractor_generator_settings::AttractorGeneratorSettings,
+    attractor::Attractor,
+    tree_space_colonization::{AttractorGeneratorSettings, SpaceColonizationSettings},
 };
 use glam::*;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 
 /// A shape to spawn attractors inside
 pub trait Shape {
@@ -11,8 +12,9 @@ pub trait Shape {
         &self,
         pos: Vec3,
         attractors: &mut Vec<Attractor>,
-        algorithm_settings: &AlgorithmSettings,
+        algorithm_settings: &SpaceColonizationSettings,
         generator_settings: &AttractorGeneratorSettings,
+        rng: &mut ChaCha8Rng,
     );
 }
 
@@ -28,8 +30,9 @@ impl Shape for BoxShape {
         &self,
         pos: Vec3,
         attractors: &mut Vec<Attractor>,
-        algorithm_settings: &AlgorithmSettings,
+        algorithm_settings: &SpaceColonizationSettings,
         generator_settings: &AttractorGeneratorSettings,
+        rng: &mut ChaCha8Rng,
     ) {
         let mut ideal_spacing =
             algorithm_settings.leaf_attraction_dist * 0.5 - algorithm_settings.kill_distance * 0.5;
@@ -47,7 +50,7 @@ impl Shape for BoxShape {
         );
 
         let scatter_distance = ideal_spacing * 0.5;
-        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(algorithm_settings.seed);
+        // let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
 
         for x in 0..x_l {
             for y in 0..x_y {

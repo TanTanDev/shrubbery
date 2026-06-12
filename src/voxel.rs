@@ -1,54 +1,144 @@
-use glam::{ivec3, vec3, IVec3, Vec3};
-use rand::{Rng, SeedableRng};
+use std::collections::HashMap;
 
-use crate::{leaf_classifier::LeafClassifier, shrubbery::Shrubbery};
+#[cfg(feature = "bevy")]
+use bevy::{ecs::resource::Resource, log::warn};
+use glam::{IVec3, Vec3, ivec3, vec3};
+use rand::{RngExt, SeedableRng, seq::IndexedRandom};
+
+use rand_chacha::ChaCha8Rng;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    leaf_classifier::LeafClassifier,
+    prelude::TreeGeneratorSpaceColonization,
+    tree_space_colonization::{BarkDecorator, SpaceColonizationSettings},
+};
 const EPSILON: f32 = 0.0001;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum VoxelType {
-    Air,
-    Branch,
-    Greenery,
+/// the raw voxel representation, that will be sent back to library-implementor
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct VoxelId(pub u32);
+
+/// voxel name mapped to VoxelId
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct VoxelMapping {
+    /// startup, mapping value to find voxel type
+    #[serde(default)]
+    pub name: String,
+    /// runtime friendly voxel id
+    #[serde(default)]
+    pub id: VoxelId,
 }
 
+impl VoxelMapping {
+    pub fn resolve(&mut self, definitions: &VoxelDefinitions) {
+        self.id = definitions.id_from_name(self.name.as_str());
+    }
+}
+
+#[cfg_attr(feature = "bevy", derive(Resource))]
+pub struct VoxelDefinitions(pub HashMap<String, VoxelId>);
+
+impl VoxelDefinitions {
+    pub fn get_id_from_name(&self, name: &str) -> Option<VoxelId> {
+        self.0.get(name).copied()
+    }
+    pub fn id_from_name(&self, name: &str) -> VoxelId {
+        self.0.get(name).copied().unwrap_or_else(|| {
+            #[cfg(feature = "bevy")]
+            warn!("no named voxel: '{}' in VoxelDefinitions", name);
+            VoxelId(0u32)
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct RandomizedVoxelEntry {
+    weight: i32,
+    voxel_mapping: VoxelMapping,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum LeafDecoration {
+    Single(VoxelMapping),
+    Randomized(Vec<RandomizedVoxelEntry>),
+}
+
+impl LeafDecoration {
+    pub fn resolve(&mut self, voxel_definitions: &VoxelDefinitions) {
+        match self {
+            LeafDecoration::Single(voxel_mapping) => voxel_mapping.resolve(voxel_definitions),
+            LeafDecoration::Randomized(items) => {
+                items
+                    .iter_mut()
+                    .for_each(|entry| entry.voxel_mapping.resolve(voxel_definitions));
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafShape {
     Sphere { r: f32 },
 }
 
 /// what method to use to classify leaves
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafSetting {
     // generate no leaves
+    #[default]
     None,
     // color branches as leaves
     BranchIsLeaf(LeafClassifier),
     // spawn leaf shapes
-    Shape(LeafShape),
+    Shape {
+        shape: LeafShape,
+        decoration: LeafDecoration,
+    },
 }
 
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BranchSizeSetting {
-    Value { distance: f32 },
-    Generation { distances: Vec<f32> },
+    Value { size: f32 },
+    Generation { sizes: Vec<f32> },
 }
 
+impl Default for BranchSizeSetting {
+    fn default() -> Self {
+        Self::Value { size: 1.0 }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct BranchRootSizeIncreaser {
+    /// height where to not add additional size
     pub height: f32,
-    // how much to maximally add to the root size
+    /// how much to maximally add to the root size
     pub additional_size: f32,
 }
 
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VoxelizeSettings {
-    // pub leaf_shape: Option<LeafShape>,
     pub leaf_settings: LeafSetting,
-    // pub leaf_classifier: LeafClassifier,
     pub branch_size_setting: BranchSizeSetting,
     pub branch_root_size_increaser: Option<BranchRootSizeIncreaser>,
 }
 
-pub fn drop_leaves(voxels: &mut Vec<(IVec3, VoxelType)>, procentage: f32, seed: u64) {
+pub fn drop_id(voxels: &mut Vec<(IVec3, VoxelId)>, voxel_id: VoxelId, procentage: f32, seed: u64) {
     let mut branch_indices = voxels
         .iter()
         .enumerate()
-        .filter(|(_i, (_p, v))| v == &VoxelType::Greenery)
+        .filter(|(_i, (_p, v))| v == &voxel_id)
         .map(|(i, _)| i)
         .collect::<Vec<_>>();
 
@@ -69,15 +159,22 @@ pub fn drop_leaves(voxels: &mut Vec<(IVec3, VoxelType)>, procentage: f32, seed: 
 }
 
 /// construct voxel positions based upon tree
-pub fn voxelize(shrubbery: &Shrubbery, settings: &VoxelizeSettings) -> Vec<(IVec3, VoxelType)> {
-    let (min_bounds, max_bounds) = shrubbery.get_bounds();
+pub fn voxelize(
+    generator: &mut TreeGeneratorSpaceColonization,
+    settings: &SpaceColonizationSettings,
+) -> Vec<(IVec3, VoxelId)> {
+    let (min_bounds, max_bounds) = generator.get_bounds();
     let mut size = max_bounds - min_bounds;
     size.x = (size.x + 1) / 2;
     size.z = (size.z + 1) / 2;
 
     // apply extra padding in size from leaves
-    if let LeafSetting::Shape(leaf_shape) = &settings.leaf_settings {
-        let padding: i32 = match leaf_shape {
+    if let LeafSetting::Shape {
+        shape,
+        decoration: _,
+    } = &settings.voxelize_settings.leaf_settings
+    {
+        let padding: i32 = match shape {
             LeafShape::Sphere { r } => r.ceil() as i32 + 1,
         };
         // todo: include root size into padding
@@ -89,7 +186,7 @@ pub fn voxelize(shrubbery: &Shrubbery, settings: &VoxelizeSettings) -> Vec<(IVec
         for y in 0..size.y {
             for z in -size.z..size.z {
                 let pos = ivec3(x, y, z);
-                process_voxel(pos, shrubbery, &settings, &mut voxels);
+                process_voxel(pos, generator, &settings, &mut voxels);
             }
         }
     }
@@ -99,20 +196,21 @@ pub fn voxelize(shrubbery: &Shrubbery, settings: &VoxelizeSettings) -> Vec<(IVec
 
 fn process_voxel(
     pos: IVec3,
-    shrubbery: &Shrubbery,
-    settings: &VoxelizeSettings,
-    voxels: &mut Vec<(IVec3, VoxelType)>,
+    shrubbery: &mut TreeGeneratorSpaceColonization,
+    settings: &SpaceColonizationSettings,
+    voxels: &mut Vec<(IVec3, VoxelId)>,
 ) {
     let sample_pos = vec3(pos.x as f32 + 0.5, pos.y as f32 + 0.5, pos.z as f32 + 0.5);
 
     // leaf shape
-    if let LeafSetting::Shape(leaf_shape) = &settings.leaf_settings {
+    if let LeafSetting::Shape { shape, decoration } = &settings.voxelize_settings.leaf_settings {
         if generate_leaf(
             sample_pos,
             pos,
-            &shrubbery,
+            shrubbery,
             voxels,
-            leaf_shape,
+            shape,
+            decoration,
             &LeafClassifier::LastBranch,
         ) {
             // no need to check for branch
@@ -121,29 +219,40 @@ fn process_voxel(
     }
 
     let (dist_to_branch, closest_branch_index) = shrubbery.distance_to_branch(sample_pos);
-    let mut size = match &settings.branch_size_setting {
-        BranchSizeSetting::Value { distance } => *distance,
-        BranchSizeSetting::Generation { distances } => {
+    let mut size = match &settings.voxelize_settings.branch_size_setting {
+        BranchSizeSetting::Value { size: distance } => *distance,
+        BranchSizeSetting::Generation { sizes: distances } => {
             let closest_branch = &shrubbery.branches[closest_branch_index];
             let index = closest_branch.generation.min(distances.len() as i32 - 1);
             *distances.get(index as usize).unwrap_or(&f32::MIN)
         }
     };
-    if let Some(increaser) = &settings.branch_root_size_increaser {
+    if let Some(increaser) = &settings.voxelize_settings.branch_root_size_increaser {
         let h_m = 1.0 - (sample_pos.y / increaser.height.max(0.001)).min(1.0);
         size += h_m * increaser.additional_size;
     }
     if dist_to_branch < size + EPSILON {
         let closest_branch = &shrubbery.branches[closest_branch_index];
-        let is_leaf = if let LeafSetting::BranchIsLeaf(classifier) = &settings.leaf_settings {
+        let is_leaf = if let LeafSetting::BranchIsLeaf(classifier) =
+            &settings.voxelize_settings.leaf_settings
+        {
             closest_branch.is_leaf(classifier)
         } else {
             false
         };
+
+        // let voxel_type = if is_leaf {
+        //     VoxelType::Greenery
+        // } else {
+        //     VoxelType::Branch
+        // };
+        // todo proper handling
         let voxel_type = if is_leaf {
-            VoxelType::Greenery
+            VoxelId(0u32)
         } else {
-            VoxelType::Branch
+            match &settings.bark_decorator {
+                BarkDecorator::Single(voxel_mapping) => voxel_mapping.id.clone(),
+            }
         };
         voxels.push((
             ivec3(
@@ -159,13 +268,14 @@ fn process_voxel(
 fn generate_leaf(
     pos: Vec3,
     grid_pos: IVec3,
-    shrubbery: &Shrubbery,
-    voxels: &mut Vec<(IVec3, VoxelType)>,
+    mut shrubbery: &mut TreeGeneratorSpaceColonization,
+    voxels: &mut Vec<(IVec3, VoxelId)>,
     leaf_shape: &LeafShape,
+    leaf_decoration: &LeafDecoration,
     leaf_classifier: &LeafClassifier,
 ) -> bool {
-    for leaf_branch in shrubbery
-        .branches
+    let TreeGeneratorSpaceColonization { branches, rng, .. } = &mut shrubbery;
+    for leaf_branch in branches
         .iter()
         .filter(|branch| branch.is_leaf(leaf_classifier))
     {
@@ -174,7 +284,15 @@ fn generate_leaf(
         match leaf_shape {
             LeafShape::Sphere { r } => {
                 if is_inside_sphere(pos, leaf_pos, *r) {
-                    voxels.push((grid_pos, VoxelType::Greenery));
+                    let voxel_id = match leaf_decoration {
+                        LeafDecoration::Single(voxel_mapping) => voxel_mapping.id,
+                        LeafDecoration::Randomized(items) => items
+                            .choose_weighted(rng, |i| i.weight)
+                            .map(|v| v.voxel_mapping.id.clone())
+                            .unwrap_or_default(),
+                    };
+                    // todo use proper id
+                    voxels.push((grid_pos, voxel_id));
                     // quick exit, we found greenery at this position
                     return true;
                 }

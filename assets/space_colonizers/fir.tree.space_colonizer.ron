@@ -1,0 +1,16 @@
+(
+    root_pos: (0.0, 0.0, 0.0),
+    initial_dir: (0.0, 1.0, 0.0),
+    kill_distance: 4.0,
+    branch_len: 4.0,
+    leaf_attraction_dist: 7.0,
+    min_trunk_height: Range(8, 10),
+    build_steps: [Grow(value_or_range: Value(5))],
+    bark_decorator: Single(VoxelMapping(name:"bark")),
+    voxelize_settings: (
+        leaf_settings: Shape(shape: Sphere(r: 2.0), decoration: Single(VoxelMapping(name: "leaf_bright")) ),
+        branch_size_setting: Value(size: 1.0),
+        branch_root_size_increaser: None,
+    ),
+)
+

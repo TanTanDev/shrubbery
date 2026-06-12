@@ -4,14 +4,20 @@ pub mod attractor_generator_settings;
 pub mod branch;
 pub mod leaf_classifier;
 pub mod shape;
-pub mod shrubbery;
+pub mod tree_space_colonization;
 pub mod vec;
 pub mod voxel;
 pub use glam;
 pub mod math_utils;
 
+#[cfg(feature = "bevy")]
+pub mod bevy_plugin;
+
 pub mod prelude {
-    pub use crate::shrubbery::Shrubbery;
+    pub use crate::tree_space_colonization::TreeGeneratorSpaceColonization;
+
+    #[cfg(feature = "bevy")]
+    pub use crate::bevy_plugin::SpaceColonizationPlugin;
 }
 
 pub mod math {
