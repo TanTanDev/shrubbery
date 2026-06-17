@@ -158,33 +158,29 @@ pub fn drop_id(voxels: &mut Vec<(IVec3, VoxelId)>, voxel_id: VoxelId, procentage
     }
 }
 
+fn leaf_padding(settings: &SpaceColonizationSettings) -> i32 {
+    match &settings.voxelize_settings.leaf_settings {
+        LeafSetting::Shape { shape, .. } => match shape {
+            LeafShape::Sphere { r } => r.ceil() as i32,
+        },
+        _ => 0,
+    }
+}
+
 /// construct voxel positions based upon tree
 pub fn voxelize(
     generator: &mut TreeGeneratorSpaceColonization,
     settings: &SpaceColonizationSettings,
 ) -> Vec<(IVec3, VoxelId)> {
-    let (min_bounds, max_bounds) = generator.get_bounds();
-    let mut size = max_bounds - min_bounds;
-    size.x = (size.x + 1) / 2;
-    size.z = (size.z + 1) / 2;
-
-    // apply extra padding in size from leaves
-    if let LeafSetting::Shape {
-        shape,
-        decoration: _,
-    } = &settings.voxelize_settings.leaf_settings
-    {
-        let padding: i32 = match shape {
-            LeafShape::Sphere { r } => r.ceil() as i32 + 1,
-        };
-        // todo: include root size into padding
-        size += IVec3::splat(padding);
-    }
+    let (mut min_bounds, mut max_bounds) = generator.get_bounds();
+    let padding = leaf_padding(settings);
+    min_bounds -= IVec3::splat(padding);
+    max_bounds += IVec3::splat(padding);
 
     let mut voxels = Vec::with_capacity(128);
-    for x in -size.x..size.x {
-        for y in 0..size.y {
-            for z in -size.z..size.z {
+    for x in min_bounds.x..max_bounds.x {
+        for y in min_bounds.y..max_bounds.y {
+            for z in min_bounds.z..max_bounds.z {
                 let pos = ivec3(x, y, z);
                 process_voxel(pos, generator, &settings, &mut voxels);
             }

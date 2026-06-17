@@ -1,16 +1,60 @@
 (
     root_pos: (0.0, 0.0, 0.0),
     initial_dir: (0.0, 1.0, 0.0),
-    kill_distance: 4.0,
-    branch_len: 4.0,
-    leaf_attraction_dist: 7.0,
-    min_trunk_height: Range(8, 10),
-    build_steps: [Grow(value_or_range: Value(5))],
+    trunk_settings: (
+        count: 1,
+        branch_len: Value(5.0),
+        initial_dir: Random(
+            y_rotation_range: Range(0, 360),
+            z_rotation_max: Range(2, 5),
+        ),
+    ),
+    build_steps: [
+        GrowDirection((
+            times: Value(5),
+            // trunk_growth_direction: Normal,
+            trunk_growth_direction: GravityLean(strength: 0.6),
+            branch_len: Value(6.0),
+        )),
+        SpawnAttractor(
+            (
+                pos: (0.0, 17.0, 0.0),
+                shape: Cube((
+                    size_x: 15.0,
+                    size_y: 10.0,
+                    size_z: 15.,
+                )),
+                attractor_spacing: AttractorSpacing(
+                    attractor_spacing: 3.0,
+                    jitter_ratio: 1.0,
+                ),
+                    
+            )
+        ),
+        GrowToAttractors((
+            times: Value(3),
+            branch_len: Value(6.0),
+            kill_distance: 4.0,
+            leaf_attraction_dist: 6.0,
+        )),
+        // GrowTrunk((
+        //     times: Value(1),
+        //     trunk_growth_direction: Normal,
+        //     branch_len: Value(17.0),
+        // )),
+    ],
     bark_decorator: Single(VoxelMapping(name:"bark")),
     voxelize_settings: (
-        leaf_settings: Shape(shape: Sphere(r: 2.0), decoration: Single(VoxelMapping(name: "leaf_bright")) ),
-        branch_size_setting: Value(size: 1.0),
-        branch_root_size_increaser: None,
+        // leaf_settings: Shape(shape: Sphere(r: 2.0), decoration: Single(VoxelMapping(name: "leaf_bright")) ),
+        leaf_settings: Shape(shape: Sphere(r: 5.0), decoration: Randomized([
+            (weight: 4, voxel_mapping: VoxelMapping(name: "leaf_bright")),
+            (weight: 1, voxel_mapping: VoxelMapping(name: "leaf_dark")),
+        ])
+        ),
+        // branch_size_setting: Generation(sizes: [3.5,1.5]),
+        branch_size_setting: Value(size: 1.5),
+        // branch_root_size_increaser: None,
+        branch_root_size_increaser: Some((height: 8.0, additional_size: 2.4)),
     ),
 )
 

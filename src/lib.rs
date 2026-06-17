@@ -11,6 +11,8 @@ pub use glam;
 pub mod math_utils;
 
 #[cfg(feature = "bevy")]
+pub mod bevy_fly_cam;
+#[cfg(feature = "bevy")]
 pub mod bevy_plugin;
 
 pub mod prelude {

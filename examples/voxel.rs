@@ -1,8 +1,8 @@
 use kiss3d::camera::ArcBall;
 use kiss3d::nalgebra::Point3;
 use shrubbery::prelude::*;
-use shrubbery::shape::BoxShape;
-use shrubbery::tree_space_colonization::{AttractorGeneratorSettings, SpaceColonizationSettings};
+use shrubbery::shape::CubeShape;
+use shrubbery::tree_space_colonization::{AttractorSpacing, SpaceColonizationSettings};
 use shrubbery::voxel::{
     BranchRootSizeIncreaser, BranchSizeSetting, LeafSetting, LeafShape, VoxelId, VoxelizeSettings,
     drop_id, voxelize,
@@ -16,19 +16,19 @@ use kiss3d::window::Window;
 
 fn make_tree_generator(
     algo_settings: &SpaceColonizationSettings,
-    attractor_generator_settings: &AttractorGeneratorSettings,
+    attractor_generator_settings: &AttractorSpacing,
 ) -> TreeGeneratorSpaceColonization {
-    let mut shrubbery = TreeGeneratorSpaceColonization::new(vec3(0., 0., 0.), vec3(0., 1., 0.));
-    shrubbery.spawn_attractors_from_shape(
-        vec3(0., 5. + 8.0, 0.),
-        BoxShape {
-            x: 15.0,
-            y: 10.0,
-            z: 15.,
-        },
-        algo_settings,
-        attractor_generator_settings,
-    );
+    let mut shrubbery = TreeGeneratorSpaceColonization::new(vec3(0., 0., 0.), vec3(0., 1., 0.), 0);
+    // shrubbery.spawn_attractors_from_shape(
+    //     vec3(0., 5. + 8.0, 0.),
+    //     BoxShape {
+    //         size_x: 15.0,
+    //         size_y: 10.0,
+    //         size_z: 15.,
+    //     },
+    //     algo_settings,
+    //     attractor_generator_settings,
+    // );
     shrubbery.build_trunk(&algo_settings);
     shrubbery
 }
@@ -51,7 +51,7 @@ async fn main() {
         min_trunk_height: 3.0,
         seed: 0,
     };
-    let attractor_generator_settings = AttractorGeneratorSettings::default();
+    let attractor_generator_settings = AttractorSpacing::default();
 
     let mut shrubbery = make_tree_generator(&algo_settings, &attractor_generator_settings);
 

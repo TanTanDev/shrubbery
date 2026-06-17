@@ -1,7 +1,8 @@
 use glam::Vec3;
 
-use crate::leaf_classifier::LeafClassifier;
+use crate::{leaf_classifier::LeafClassifier, tree_space_colonization::TrunkGrowthDirection};
 
+#[derive(Debug)]
 pub struct Branch {
     pub pos: Vec3,
     pub parent_index: Option<usize>,
@@ -18,17 +19,32 @@ pub struct Branch {
 
 impl Branch {
     /// make a new branch based on this branch calculated growth direciton
-    pub fn next(&self, index: usize, branch_len: f32, is_new_generation: bool) -> Self {
+    pub fn next(
+        &self,
+        index: usize,
+        branch_len: f32,
+        is_new_generation: bool,
+        trunk_growth_dir: &TrunkGrowthDirection,
+    ) -> Self {
         let mut generation = self.generation;
         if is_new_generation {
             generation += 1;
         }
+
+        let dir = match trunk_growth_dir {
+            TrunkGrowthDirection::Normal => self.dir,
+            TrunkGrowthDirection::GravityLean { strength } => {
+                (self.dir + Vec3::NEG_Y * *strength).normalize()
+                // self.dir * branch_len
+            }
+        };
+
         Self {
-            pos: self.pos + self.dir * branch_len,
+            pos: self.pos + dir * branch_len,
             parent_index: Some(index),
-            dir: self.dir,
+            dir: dir,
             attractors_count: 0,
-            original_dir: self.dir,
+            original_dir: dir,
             child_count: 0,
             generation,
         }

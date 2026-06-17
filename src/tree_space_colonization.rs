@@ -2,15 +2,11 @@ use crate::{
     attractor::Attractor,
     branch::Branch,
     math_utils::{dist_to_line, rotate_point},
-    shape::{BoxShape, Shape},
+    shape::{CubeShape, Shape},
     voxel::{LeafSetting, VoxelDefinitions, VoxelMapping, VoxelizeSettings},
 };
 
-use bevy::log::info;
-#[cfg(feature = "bevy")]
-use bevy::{asset::Asset, reflect::TypePath};
-
-use glam::{IVec3, Vec2, Vec3, ivec3, vec2, vec3};
+use glam::{IVec3, Quat, Vec2, Vec3, ivec3, vec2, vec3};
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 #[cfg(feature = "serde")]
@@ -29,17 +25,37 @@ impl ValueOrRangeU32 {
     pub fn get(&self, rng: &mut ChaCha8Rng) -> u32 {
         match self {
             ValueOrRangeU32::Value(v) => *v,
-            ValueOrRangeU32::Range(min, max) => rng.random_range(*min..=*max),
+            ValueOrRangeU32::Range(min, max) => rng.random_range((*min).min(*max)..=*max),
+        }
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ValueOrRangeF32 {
+    /// constant value
+    Value(f32),
+    /// value chosen between (min, max) inclusive
+    Range(f32, f32),
+}
+
+impl ValueOrRangeF32 {
+    pub fn get(&self, rng: &mut ChaCha8Rng) -> f32 {
+        match self {
+            ValueOrRangeF32::Value(v) => *v,
+            ValueOrRangeF32::Range(min, max) => rng.random_range((*min).min(*max)..=*max),
         }
     }
 }
 
 /// instructions for how to build a space colonization tree
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SpaceColonizationStep {
     /// how many times to run the space colonization algorithm
-    Grow { value_or_range: ValueOrRangeU32 },
+    GrowDirection(GrowDirection),
+    GrowToAttractors(GrowToAttractors),
+    SpawnAttractor(SpawnAttractors),
 }
 
 #[derive(Clone, Debug)]
@@ -51,14 +67,8 @@ pub struct SpaceColonizationSettings {
     /// first branch direction
     #[serde(default = "default_initial_dir")]
     pub initial_dir: Vec3,
-    /// radius to delete attractors
-    pub kill_distance: f32,
-    /// how far a single branch reaches
-    pub branch_len: f32,
-    /// how close an attractor has to be to pull branch
-    pub leaf_attraction_dist: f32,
-    /// force the minimum trunk height, within (min, max)
-    pub min_trunk_height: ValueOrRangeU32,
+    // how the initial branches will spawn
+    pub trunk_settings: TrunkSettings,
     /// steps, how to grow/shape/modify the tree
     pub build_steps: Vec<SpaceColonizationStep>,
     /// what voxels to use for bark
@@ -67,29 +77,121 @@ pub struct SpaceColonizationSettings {
     pub voxelize_settings: VoxelizeSettings,
 }
 
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct GrowDirection {
+    pub times: ValueOrRangeU32,
+    pub trunk_growth_direction: TrunkGrowthDirection,
+    pub branch_len: ValueOrRangeF32,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct GrowToAttractors {
+    pub times: ValueOrRangeU32,
+    pub branch_len: ValueOrRangeF32,
+    /// radius to delete attractors
+    pub kill_distance: f32,
+    /// how close an attractor has to be to pull branch
+    pub leaf_attraction_dist: f32,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum TrunkGrowthDirection {
+    Normal,
+    GravityLean { strength: f32 },
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum InitialDir {
+    /// specific direction
+    Value(Vec3),
+    Random {
+        /// angle in degrees
+        y_rotation_range: ValueOrRangeU32,
+        /// angle in degrees
+        z_rotation_max: ValueOrRangeU32,
+    },
+}
+
+// impl InitialDir {
+//     pub fn get(&self, rng: &mut ChaCha8Rng) -> Vec3 {
+//         Vec3::Y
+//     }
+// }
+
+impl InitialDir {
+    pub fn get(&self, rng: &mut ChaCha8Rng) -> Vec3 {
+        match self {
+            InitialDir::Value(dir) => dir.normalize(),
+
+            InitialDir::Random {
+                y_rotation_range,
+                z_rotation_max,
+            } => {
+                let yaw = (y_rotation_range.get(rng) as f32).to_radians();
+
+                let tilt = (z_rotation_max.get(rng) as f32).to_radians();
+
+                let horizontal = vec3(yaw.cos(), 0.0, yaw.sin());
+
+                (horizontal * tilt.sin() + Vec3::Y * tilt.cos()).normalize()
+            }
+        }
+    }
+}
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct TrunkSettings {
+    /// how many initial trunks to spawn
+    count: usize,
+    branch_len: ValueOrRangeF32,
+    initial_dir: InitialDir,
+}
+
+impl Default for TrunkSettings {
+    fn default() -> Self {
+        Self {
+            count: 1,
+            initial_dir: InitialDir::Value(Vec3::Y),
+            branch_len: ValueOrRangeF32::Value(2.0),
+        }
+    }
+}
+
 fn default_initial_dir() -> Vec3 {
     Vec3::Y
 }
 
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct SpawnAttractors {
+    pub pos: Vec3,
+    pub shape: Shape,
+    pub attractor_spacing: AttractorSpacing,
+}
+
+impl SpawnAttractors {}
+
 impl SpaceColonizationSettings {
     pub fn make_generator(&self, seed: u64) -> TreeGeneratorSpaceColonization {
-        let mut generator =
-            TreeGeneratorSpaceColonization::new(self.root_pos, self.initial_dir, seed);
+        let mut generator = TreeGeneratorSpaceColonization::new(&self, seed);
 
-        let attractor_settings = AttractorGeneratorSettings::default();
+        let attractor_settings = AttractorSpacing::default();
 
-        generator.spawn_attractors_from_shape(
-            // vec3(0., 5. + 15.0, 0.),
-            vec3(0., 5. + 8.0, 0.),
-            BoxShape {
-                x: 15.0,
-                y: 10.0,
-                z: 15.,
-            },
-            &self,
-            &attractor_settings,
-        );
-        generator.build_trunk(&self);
+        // generator.spawn_attractors_from_shape(
+        //     vec3(0., 5. + 8.0, 0.),
+        //     Shape::Box(BoxShape {
+        //         size_x: 15.0,
+        //         size_y: 10.0,
+        //         size_z: 15.,
+        //     }),
+        //     &self,
+        //     &attractor_settings,
+        // );
+        // generator.build_trunk(&self);
         generator
     }
 
@@ -115,15 +217,15 @@ impl Default for SpaceColonizationSettings {
         Self {
             root_pos: Vec3::ZERO,
             initial_dir: Vec3::Y,
-            kill_distance: 0.3,
-            branch_len: 0.3,
-            leaf_attraction_dist: 5.,
-            min_trunk_height: ValueOrRangeU32::Value(1),
-            build_steps: vec![SpaceColonizationStep::Grow {
-                value_or_range: ValueOrRangeU32::Value(5),
-            }],
+            build_steps: vec![SpaceColonizationStep::GrowToAttractors(GrowToAttractors {
+                times: ValueOrRangeU32::Value(5),
+                branch_len: ValueOrRangeF32::Value(5.0),
+                kill_distance: 0.3,
+                leaf_attraction_dist: 5.,
+            })],
             bark_decorator: BarkDecorator::Single(VoxelMapping::default()),
             voxelize_settings: VoxelizeSettings::default(),
+            trunk_settings: TrunkSettings::default(),
         }
     }
 }
@@ -135,22 +237,22 @@ pub enum BarkDecorator {
     Single(VoxelMapping),
 }
 
-/// describes how many attractor positions spawn
-pub struct AttractorGeneratorSettings {
-    pub max_leaves: Option<i32>,
-    pub min_leaves: Option<i32>,
-    // a value of 1: will spawn enough leaves to expand the whole area
-    // 1.0 is minimum recommended value, higher values will yield potentially more branching
-    // but higher values also generates more leaves, tolling performance
-    pub density: f32,
+/// describes how many attractors to spawn in shape
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct AttractorSpacing {
+    /// how far away the attractors spawn in the shape
+    pub attractor_spacing: f32,
+    // how far to randomize the attractor positions.
+    // 0.0: perfect grid spacing. 1.0: attractors can just touch.
+    pub jitter_ratio: f32,
 }
 
-impl Default for AttractorGeneratorSettings {
+impl Default for AttractorSpacing {
     fn default() -> Self {
         Self {
-            max_leaves: Some(500),
-            min_leaves: Some(30),
-            density: 1.0,
+            attractor_spacing: 3.0,
+            jitter_ratio: 1.0,
         }
     }
 }
@@ -164,19 +266,25 @@ pub struct TreeGeneratorSpaceColonization {
 }
 
 impl TreeGeneratorSpaceColonization {
-    pub fn new(root_pos: Vec3, initial_dir: Vec3, seed: u64) -> Self {
-        let rng = ChaCha8Rng::seed_from_u64(seed);
+    // pub fn new(root_pos: Vec3, initial_dir: Vec3, seed: u64) -> Self {
+    pub fn new(settings: &SpaceColonizationSettings, seed: u64) -> Self {
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
         let mut branches = Vec::new();
-        let root = Branch {
-            pos: root_pos,
-            parent_index: None,
-            dir: initial_dir,
-            attractors_count: 0,
-            original_dir: initial_dir,
-            child_count: 0,
-            generation: 0,
-        };
-        branches.push(root);
+
+        for _i in 0..settings.trunk_settings.count {
+            let dir = settings.trunk_settings.initial_dir.get(&mut rng);
+            let root = Branch {
+                pos: Vec3::ZERO,
+                parent_index: None,
+                dir,
+                attractors_count: 0,
+                original_dir: dir,
+                child_count: 0,
+                generation: 0,
+            };
+            branches.push(root);
+        }
+
         Self {
             branches,
             attractors: Vec::new(),
@@ -192,10 +300,21 @@ impl TreeGeneratorSpaceColonization {
         settings: &SpaceColonizationSettings,
     ) {
         match step {
-            SpaceColonizationStep::Grow { value_or_range } => {
-                for _ in 0..value_or_range.get(&mut self.rng) {
-                    self.grow(settings);
+            SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
+                for _ in 0..grow_to_attractors.times.get(&mut self.rng) {
+                    self.grow(settings, grow_to_attractors);
                 }
+            }
+            SpaceColonizationStep::SpawnAttractor(spawn_attractor) => {
+                spawn_attractor.shape.generate(
+                    spawn_attractor.pos,
+                    &mut self.attractors,
+                    &spawn_attractor.attractor_spacing,
+                    &mut self.rng,
+                );
+            }
+            SpaceColonizationStep::GrowDirection(grow_trunk) => {
+                self.grow_trunk(grow_trunk);
             }
         }
     }
@@ -243,58 +362,84 @@ impl TreeGeneratorSpaceColonization {
     }
 
     /// spawn initial branches based on settings.
-    pub fn build_trunk(&mut self, settings: &SpaceColonizationSettings) {
-        let mut root_end_pos = self.branches[0].pos;
-        let dir = self.branches[0].dir;
-        let mut consumed_height = 0.;
-        // the first root will be as long as it needs to be until it starts gaining attractions
-        let max_iterations = 1000;
-        'a: for _ in 0..max_iterations {
-            consumed_height += settings.branch_len;
-            root_end_pos += settings.branch_len * dir;
-            for leaf in self.attractors.iter() {
-                let dist = root_end_pos.distance(leaf.pos);
-                if dist < settings.leaf_attraction_dist {
-                    break 'a;
-                }
-            }
-        }
-        info!("constumed height: {:?}", consumed_height);
+    // pub fn build_trunk(&mut self, settings: &SpaceColonizationSettings) {
+    //     let mut root_end_pos = self.branches[0].pos;
+    //     let dir = self.branches[0].dir;
+    //     let mut consumed_height = 0.;
+    //     // the first root will be as long as it needs to be until it starts gaining attractions
+    //     let max_iterations = 1000;
+    //     'a: for _i in 0..max_iterations {
+    //         consumed_height += settings.branch_len;
+    //         root_end_pos += settings.branch_len * dir;
+    //         for leaf in self.attractors.iter() {
+    //             let dist = root_end_pos.distance(leaf.pos);
+    //             if dist < settings.leaf_attraction_dist {
+    //                 break 'a;
+    //             }
+    //         }
+    //     }
 
-        self.branches[0].child_count += 1;
-        let new_branch = self.branches[0].next(0, consumed_height, false);
-        Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
-        self.branches.push(new_branch);
+    //     self.branches[0].child_count += 1;
+    //     let new_branch = self.branches[0].next(0, consumed_height, false);
+    //     Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
+    //     self.branches.push(new_branch);
 
-        // keep adding branches upwards until we reach the trunk_height
-        let trunk_height = settings.min_trunk_height.get(&mut self.rng) as f32;
-        while consumed_height < trunk_height {
-            consumed_height += settings.branch_len;
+    // keep adding branches upwards until we reach the trunk_height
+    // let trunk_height = settings.min_trunk_height.get(&mut self.rng) as f32;
+    // for _i in 0..max_iterations {
+    //     if consumed_height > trunk_height {
+    //         break;
+    //     }
+    //     consumed_height += settings.branch_len;
+    //     let last_index = self.branches.len() - 1;
+    //     let new_branch = self.branches[last_index].next(last_index, settings.branch_len, false);
+    //     self.branches[last_index].child_count += 1;
+    //     Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
+    //     self.branches.push(new_branch);
+    // }
+    // }
+    pub fn grow_trunk(&mut self, grow_trunk: &GrowDirection) {
+        for _i in 0..grow_trunk.times.get(&mut self.rng) {
+            // todo: instead find the ends of all root branches
             let last_index = self.branches.len() - 1;
-            let new_branch = self.branches[last_index].next(last_index, settings.branch_len, false);
+            let new_branch = self.branches[last_index].next(
+                last_index,
+                grow_trunk.branch_len.get(&mut self.rng),
+                false,
+                &grow_trunk.trunk_growth_direction,
+            );
             self.branches[last_index].child_count += 1;
             Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
-            self.branches.push(new_branch)
+            self.branches.push(new_branch);
         }
     }
 
     /// using space colonization algorithm, spawn new branches
-    pub fn grow(&mut self, settings: &SpaceColonizationSettings) {
-        info!("growing");
-        for leaf in self.attractors.iter_mut() {
+    pub fn grow(
+        &mut self,
+        settings: &SpaceColonizationSettings,
+        grow_to_attractors: &GrowToAttractors,
+    ) {
+        for attractor in self.attractors.iter_mut() {
             let mut closest_branch: Option<usize> = None;
             let mut closest_dist = 999999.;
             // find shortest signed distance of all branches
-            for (branch_index, branch) in self.branches.iter_mut().enumerate() {
-                let dist = leaf.pos.distance(branch.pos);
+            for (branch_index, branch) in self
+                .branches
+                .iter_mut()
+                // don't grow branches from the root
+                .enumerate()
+                .filter(|(_i, branch)| branch.parent_index.is_some())
+            {
+                let dist = attractor.pos.distance(branch.pos);
                 // is this branch to close to the leaf, discard it
-                if dist < settings.kill_distance {
-                    leaf.reached = true;
+                if dist < grow_to_attractors.kill_distance {
+                    attractor.reached = true;
                     closest_branch = None;
                     break;
                 }
                 // to far away to be attracted towards
-                if dist > settings.leaf_attraction_dist {
+                if dist > grow_to_attractors.leaf_attraction_dist {
                     continue;
                 }
                 // record closest branch
@@ -306,14 +451,13 @@ impl TreeGeneratorSpaceColonization {
             // pull closest branch towards attractor
             if let Some(closest_branch_index) = closest_branch {
                 let closest_branch_pos = self.branches[closest_branch_index].pos;
-                let new_branch_dir = leaf.pos - closest_branch_pos;
+                let new_branch_dir = attractor.pos - closest_branch_pos;
                 let new_branch_dir = new_branch_dir.normalize();
                 self.branches[closest_branch_index].dir += new_branch_dir;
                 self.branches[closest_branch_index].attractors_count += 1;
             }
         }
-        // remove reached leaves
-        self.attractors.retain(|leaf| !leaf.reached);
+        self.attractors.retain(|attractor| !attractor.reached);
 
         // spawn new branches using previous calculations
         let mut to_add = vec![];
@@ -324,7 +468,12 @@ impl TreeGeneratorSpaceColonization {
             .filter(|(_, branch)| branch.attractors_count > 0)
         {
             branch.dir = branch.dir.normalize();
-            let new_branch = branch.next(branch_index, settings.branch_len, true);
+            let new_branch = branch.next(
+                branch_index,
+                grow_to_attractors.branch_len.get(&mut self.rng),
+                true,
+                &TrunkGrowthDirection::Normal,
+            );
             branch.child_count += 1;
             Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
             to_add.push(new_branch);
@@ -334,19 +483,15 @@ impl TreeGeneratorSpaceColonization {
     }
 
     /// spawn particles inside provided shape, based on settings
-    pub fn spawn_attractors_from_shape<TShape>(
+    pub fn spawn_attractors_from_shape(
         &mut self,
         pos: Vec3,
-        shape: TShape,
-        settings: &SpaceColonizationSettings,
-        attractor_generator_settings: &AttractorGeneratorSettings,
-    ) where
-        TShape: Shape,
-    {
+        shape: Shape,
+        attractor_generator_settings: &AttractorSpacing,
+    ) {
         shape.generate(
             pos,
             &mut self.attractors,
-            settings,
             attractor_generator_settings,
             &mut self.rng,
         );

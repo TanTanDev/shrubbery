@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use bevy::{
     asset::{Asset, AssetLoader, ron},
     prelude::*,
@@ -7,10 +5,7 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    tree_space_colonization::SpaceColonizationSettings,
-    voxel::{VoxelDefinitions, VoxelId},
-};
+use crate::{tree_space_colonization::SpaceColonizationSettings, voxel::VoxelDefinitions};
 
 pub struct SpaceColonizationPlugin;
 
