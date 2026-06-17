@@ -4,7 +4,10 @@ use std::{
 };
 
 use bevy::{
-    color::palettes::css::{BROWN, DARK_GREEN, GREEN},
+    color::palettes::{
+        css::{BROWN, DARK_GREEN, GREEN},
+        tailwind::GREEN_500,
+    },
     prelude::*,
 };
 use rand::{RngExt, SeedableRng};
@@ -91,8 +94,10 @@ fn setup(
 ) {
     let voxel_materials: Vec<VoxelMaterial> = [
         ("bark", BROWN),
-        ("leaf_bright", GREEN),
-        ("leaf_dark", DARK_GREEN),
+        // ("leaf_bright", GREEN),
+        ("leaf_bright", Srgba::BLACK.with_green(0.6)),
+        ("leaf_mid", Srgba::BLACK.with_green(0.5)),
+        ("leaf_dark", Srgba::BLACK.with_green(0.4)),
     ]
     .into_iter()
     .map(Into::<VoxelMaterial>::into)

@@ -1,4 +1,4 @@
-use glam::{vec2, Vec2, Vec3};
+use glam::{Vec2, Vec3, vec2};
 
 /// rotate a vec2 position around the origin of 0,0
 pub fn rotate_point(pos: Vec2, radians: f32) -> Vec2 {
@@ -22,4 +22,9 @@ pub fn dist_to_line(pos: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
         return bv.length();
     }
     ab.cross(ac).length() / ab.length()
+}
+
+/// return the percent placement of a position in relation to min max boudns
+pub fn percent_in_range(position: f32, min: f32, max: f32) -> f32 {
+    ((position - min) / (max - min)).clamp(0.0, 1.0)
 }

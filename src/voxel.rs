@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     leaf_classifier::LeafClassifier,
+    math_utils::percent_in_range,
     prelude::TreeGeneratorSpaceColonization,
     tree_space_colonization::{BarkDecorator, SpaceColonizationSettings},
 };
@@ -64,9 +65,42 @@ pub struct RandomizedVoxelEntry {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+/// adds offset unto gradient coloring, to add variation
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum LeafGradientModulation {
+    Random { percent_offset: f32 },
+    Wave { frequency: f32, amplitude: f32 },
+}
+
+/// describes how to color voxels
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct LeafGradientSettings {
+    pub axis: Axis,
+    pub modulation: Option<LeafGradientModulation>,
+    pub steps: Vec<LeafGradientEntry>,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct LeafGradientEntry {
+    pub percent: f32,
+    pub voxel_mapping: VoxelMapping,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafDecoration {
     Single(VoxelMapping),
     Randomized(Vec<RandomizedVoxelEntry>),
+    Gradient(LeafGradientSettings),
 }
 
 impl LeafDecoration {
@@ -75,6 +109,12 @@ impl LeafDecoration {
             LeafDecoration::Single(voxel_mapping) => voxel_mapping.resolve(voxel_definitions),
             LeafDecoration::Randomized(items) => {
                 items
+                    .iter_mut()
+                    .for_each(|entry| entry.voxel_mapping.resolve(voxel_definitions));
+            }
+            LeafDecoration::Gradient(settings) => {
+                settings
+                    .steps
                     .iter_mut()
                     .for_each(|entry| entry.voxel_mapping.resolve(voxel_definitions));
             }
@@ -286,6 +326,58 @@ fn generate_leaf(
                             .choose_weighted(rng, |i| i.weight)
                             .map(|v| v.voxel_mapping.id.clone())
                             .unwrap_or_default(),
+                        LeafDecoration::Gradient(gradient_settings) => {
+                            let leaf_v = match gradient_settings.axis {
+                                Axis::X => leaf_pos.x,
+                                Axis::Y => leaf_pos.y,
+                                Axis::Z => leaf_pos.z,
+                            };
+                            let pos_v = match gradient_settings.axis {
+                                Axis::X => pos.x,
+                                Axis::Y => pos.y,
+                                Axis::Z => pos.z,
+                            };
+                            let bounds = (leaf_v - *r, leaf_v + *r);
+                            let mut percent = percent_in_range(pos_v, bounds.0, bounds.1);
+
+                            // apply modulaion
+                            if let Some(modulation) = &gradient_settings.modulation {
+                                percent += match modulation {
+                                    LeafGradientModulation::Random { percent_offset } => {
+                                        rng.random_range(-*percent_offset..*percent_offset)
+                                        // todo
+                                    }
+                                    LeafGradientModulation::Wave {
+                                        frequency,
+                                        amplitude,
+                                    } => {
+                                        let coord = (pos.x + pos.z) * *frequency;
+                                        let wave = coord.sin();
+                                        // let wave = wave * 0.5 + 0.5;
+                                        wave * amplitude // let x = (pos.x as i32) % modulus;
+                                        // let z = (pos.z as i32) % modulus;
+                                        // let offset = (x + z) % modulus;
+
+                                        // let percent = offset as f32 / *modulus as f32;
+
+                                        // percent * percent_offset
+                                    }
+                                }
+                            }
+                            percent = percent.clamp(0.0, 1.0);
+
+                            let mut selected_voxel_id = VoxelId::default();
+                            // find gradient
+                            for step in gradient_settings.steps.iter() {
+                                if percent > step.percent {
+                                    continue;
+                                }
+                                // found
+                                selected_voxel_id = step.voxel_mapping.id;
+                                break;
+                            }
+                            selected_voxel_id
+                        }
                     };
                     // todo use proper id
                     voxels.push((grid_pos, voxel_id));

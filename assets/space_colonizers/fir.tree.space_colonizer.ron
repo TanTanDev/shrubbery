@@ -45,10 +45,29 @@
     bark_decorator: Single(VoxelMapping(name:"bark")),
     voxelize_settings: (
         // leaf_settings: Shape(shape: Sphere(r: 2.0), decoration: Single(VoxelMapping(name: "leaf_bright")) ),
-        leaf_settings: Shape(shape: Sphere(r: 5.0), decoration: Randomized([
-            (weight: 4, voxel_mapping: VoxelMapping(name: "leaf_bright")),
-            (weight: 1, voxel_mapping: VoxelMapping(name: "leaf_dark")),
-        ])
+        // leaf_settings: Shape(shape: Sphere(r: 5.0), decoration: Randomized([
+        //     (weight: 4, voxel_mapping: VoxelMapping(name: "leaf_bright")),
+        //     (weight: 1, voxel_mapping: VoxelMapping(name: "leaf_dark")),
+        // ])
+        leaf_settings: Shape(shape: Sphere(r: 5.0), decoration: Gradient((
+            axis: Y,
+            // modulation: Some(Random(percent_offset: 0.1)),
+            modulation: Some(Wave(amplitude: 0.1, frequency: 1.0)),
+            steps: [
+                LeafGradientEntry(
+                    percent: 0.33,
+                    voxel_mapping: VoxelMapping(name: "leaf_dark"),
+                ),
+                LeafGradientEntry(
+                    percent: 0.66,
+                    voxel_mapping: VoxelMapping(name: "leaf_mid"),
+                ),
+                LeafGradientEntry(
+                    percent: 1.0,
+                    voxel_mapping: VoxelMapping(name: "leaf_bright"),
+                ),
+            ],
+        ))
         ),
         // branch_size_setting: Generation(sizes: [3.5,1.5]),
         branch_size_setting: Value(size: 1.5),
