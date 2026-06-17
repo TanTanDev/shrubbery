@@ -51,8 +51,8 @@
         // ])
         leaf_settings: Shape(shape: Sphere(r: 5.0), decoration: Gradient((
             axis: Y,
-            // modulation: Some(Random(percent_offset: 0.1)),
-            modulation: Some(Wave(amplitude: 0.1, frequency: 1.0)),
+            modulation: Some(Random(percent_offset: 0.1)),
+            // modulation: Some(Wave(amplitude: 0.1, frequency: 1.0)),
             steps: [
                 LeafGradientEntry(
                     percent: 0.33,

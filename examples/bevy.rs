@@ -1,13 +1,15 @@
 use std::{
     collections::HashMap,
+    f32::consts::PI,
     time::{Duration, Instant},
 };
 
 use bevy::{
     color::palettes::{
-        css::{BROWN, DARK_GREEN, GREEN},
+        css::{BROWN, DARK_GREEN, GREEN, WHITE, YELLOW},
         tailwind::GREEN_500,
     },
+    light::CascadeShadowConfigBuilder,
     prelude::*,
 };
 use rand::{RngExt, SeedableRng};
@@ -65,11 +67,12 @@ fn main() {
         })
         .add_systems(Startup, setup)
         .add_systems(Update, spawn_on_asset_change)
-        // .add_systems(Update, cycle_seed)
+        .add_systems(Update, cycle_seed)
         .add_systems(Update, update_on_press)
+        .add_systems(Update, move_light)
         .insert_resource(TreeSeed(0))
         .insert_resource(TreeSeedTimer(Timer::new(
-            Duration::from_millis(500),
+            Duration::from_millis(3500),
             TimerMode::Repeating,
         )))
         .run();
@@ -125,14 +128,66 @@ fn setup(
     ));
 
     commands.spawn((
-        Mesh3d(meshes.add(Circle::new(4.0))),
+        Mesh3d(meshes.add(Circle::new(10.0))),
         MeshMaterial3d(materials.add(Color::WHITE)),
         Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
     ));
+
     commands.insert_resource(TreeAssetHandle(
         asset_server.load("space_colonizers/fir.tree.space_colonizer.ron"),
     ));
+
+    commands.insert_resource(AmbientLight {
+        color: WHITE.into(),
+        brightness: 400.0,
+        affects_lightmapped_meshes: true,
+    });
+
+    commands.spawn((
+        DirectionalLight {
+            illuminance: light_consts::lux::OVERCAST_DAY,
+            shadows_enabled: true,
+            ..default()
+        },
+        Transform {
+            translation: Vec3::new(0.0, 2.0, 0.0),
+            rotation: Quat::from_rotation_x(-PI / 4.),
+            ..default()
+        },
+        CascadeShadowConfigBuilder {
+            first_cascade_far_bound: 4.0,
+            maximum_distance: 10.0,
+            ..default()
+        }
+        .build(),
+    ));
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::WHITE)),
+        PointLight {
+            shadows_enabled: true,
+            color: YELLOW.into(),
+            ..default()
+        },
+        Transform::from_xyz(4.0, 8.0, 4.0),
+        RotatingLightTag,
+    ));
 }
+
+fn move_light(mut query: Query<&mut Transform, With<RotatingLightTag>>, time: Res<Time>) {
+    let speed = 5.0;
+    let rotation = time.elapsed_secs() * speed;
+    let quat = Quat::from_rotation_y(rotation);
+    let distance = 14.0;
+    let boom = Vec3::X * distance;
+    for mut transform in query.iter_mut() {
+        transform.translation = quat * boom;
+        transform.translation.y = 8.0;
+    }
+}
+
+#[derive(Component)]
+pub struct RotatingLightTag;
 
 /// root entity holding tree voxels
 #[derive(Component)]
@@ -193,17 +248,9 @@ fn spawn_on_asset_change(
         let Some(tree_asset) = tree_assets.get(&tree_handle.0) else {
             return;
         };
-        info!("rebuilding tree!");
-        let now = Instant::now();
-        // tree_asset.0.error_if_voxel_ids_air();
         let mut generator = tree_asset.0.make_generator(tree_seed.0);
-        // let mut rng = ChaCha8Rng::seed_from_u64(0u64);
         generator.execute_all_step(&tree_asset.0);
-
-        info!("time to build: {:?}", now.elapsed());
-        let now = Instant::now();
         let voxels = voxelize(&mut generator, &tree_asset.0);
-        info!("time to voxelize: {:?}", now.elapsed());
 
         let root_entity_id = commands
             .spawn((Transform::default(), Visibility::Visible, PreviewTreeTag))
