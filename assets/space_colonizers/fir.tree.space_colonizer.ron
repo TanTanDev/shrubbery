@@ -1,8 +1,7 @@
 (
-    root_pos: (0.0, 0.0, 0.0),
-    initial_dir: (0.0, 1.0, 0.0),
     trunk_settings: (
         count: 1,
+        root_pos: (0.0, 0.0, 0.0),
         branch_len: Value(5.0),
         initial_dir: Random(
             y_rotation_range: Range(0, 360),

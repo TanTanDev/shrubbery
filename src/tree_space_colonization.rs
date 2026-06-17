@@ -61,12 +61,6 @@ pub enum SpaceColonizationStep {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpaceColonizationSettings {
-    /// first branch position
-    #[serde(default)]
-    pub root_pos: Vec3,
-    /// first branch direction
-    #[serde(default = "default_initial_dir")]
-    pub initial_dir: Vec3,
     // how the initial branches will spawn
     pub trunk_settings: TrunkSettings,
     /// steps, how to grow/shape/modify the tree
@@ -148,6 +142,7 @@ pub struct TrunkSettings {
     /// how many initial trunks to spawn
     count: usize,
     branch_len: ValueOrRangeF32,
+    root_pos: Vec3,
     initial_dir: InitialDir,
 }
 
@@ -157,12 +152,9 @@ impl Default for TrunkSettings {
             count: 1,
             initial_dir: InitialDir::Value(Vec3::Y),
             branch_len: ValueOrRangeF32::Value(2.0),
+            root_pos: Vec3::ZERO,
         }
     }
-}
-
-fn default_initial_dir() -> Vec3 {
-    Vec3::Y
 }
 
 #[derive(Clone, Debug)]
@@ -215,8 +207,6 @@ impl SpaceColonizationSettings {
 impl Default for SpaceColonizationSettings {
     fn default() -> Self {
         Self {
-            root_pos: Vec3::ZERO,
-            initial_dir: Vec3::Y,
             build_steps: vec![SpaceColonizationStep::GrowToAttractors(GrowToAttractors {
                 times: ValueOrRangeU32::Value(5),
                 branch_len: ValueOrRangeF32::Value(5.0),
@@ -274,7 +264,7 @@ impl TreeGeneratorSpaceColonization {
         for _i in 0..settings.trunk_settings.count {
             let dir = settings.trunk_settings.initial_dir.get(&mut rng);
             let root = Branch {
-                pos: Vec3::ZERO,
+                pos: settings.trunk_settings.root_pos,
                 parent_index: None,
                 dir,
                 attractors_count: 0,
