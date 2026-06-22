@@ -1,0 +1,95 @@
+// Tree 4: weeping tree.
+// Trunk curves hard with gravity. Sub-canopy pulled up from tips.
+// Heavy droop whorls hang down from the sub-canopy branches.
+(
+    trunk_settings: (
+        count: 1,
+        root_pos: (0.0, 0.0, 0.0),
+        branch_len: Value(4.0),
+        initial_dir: Random(
+            y_rotation_range: Range(0, 360),
+            z_rotation_max: Range(3, 4),
+        ),
+    ),
+    build_steps: [
+        // Stronger gravity lean for a visible curve
+        GrowDirection((
+            times: Value(9),
+            trunk_growth_direction: GravityLean(strength: 0.35),
+            branch_len: Value(4.5),
+        )),
+        // Spawn attractors straight up from trunk tip — pulls sub-branches upward
+        SpawnAttractorOnBranches((
+            selector: MinHeight(6.0),
+            // selector: Tips,
+            offset_distance: 3.0,
+            offset_dir: WorldUp,
+            shape: Cube((size_x: 10.0, size_y: 6.0, size_z: 10.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 1.0),
+        )),
+        GrowToAttractors((
+            times: Value(1),
+            branch_len: Range(4.0, 12.0),
+            kill_distance: 2.5,
+            leaf_attraction_dist: 8.0,
+        )),
+        ClearAttractors,
+        SpawnLeaves((
+            selector: Tips,
+            shape: Sphere(radius: Range(2.0, 5.0)),
+            decoration: Gradient((
+                axis: Y,
+                modulation: Some(Random(percent_offset: 0.1)),
+                steps: [
+                    LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                    LeafGradientEntry(percent: 0.66, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                ],
+            )),
+        )),
+        SpawnAttractorOnBranches((
+            selector: MinHeight(20.0),
+            // selector: Tips,
+            offset_distance: 3.0,
+            offset_dir: WorldDown,
+            shape: Cube((size_x: 10.0, size_y: 6.0, size_z: 10.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 1.0),
+        )),
+        GrowToAttractors((
+            times: Value(1),
+            // branch_len: Range(4.0, 12.0),
+            branch_len: Value(3.0),
+            kill_distance: 2.5,
+            leaf_attraction_dist: 8.0,
+        )),
+        // ClearAttractors,
+        // SpawnLeaves((
+        //     selector: Tips,
+        //     shape: ConiferWhorl((
+        //         max_branch_length: 4.0,
+        //         max_branch_width: 9.0,
+        //         branch_sharpness: 0.4,
+        //         branch_thickness: 1,
+        //         // Very strong droop — leaves hang straight down
+        //         branch_droop: 0.9,
+        //         tip_lift: 0.0,
+        //         rotation_step: 2.39996,
+        //         length_jitter_ratio: 0.2,
+        //         taper: None,
+        //         arm_facing: Horizontal,
+        //     )),
+        //     decoration: Gradient((
+        //         axis: Y,
+        //         modulation: Some(Random(percent_offset: 0.1)),
+        //         steps: [
+        //             LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+        //             LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+        //             LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+        //         ],
+        //     )),
+        // )),
+    ],
+    bark_decorator: Single(VoxelMapping(name: "bark")),
+    branch_size_setting: Generation(sizes: [1.0, 1.0]),
+    branch_root_size_increaser: Some((height: 12.0, additional_size: 2.5)),
+)

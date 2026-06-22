@@ -15,6 +15,9 @@ pub struct Branch {
     pub child_count: i32,
     /// what iteration this branch was made
     pub generation: i32,
+    /// Index into the generator's `leaf_groups` vec, set by a `SpawnLeaves`
+    /// build step.  `None` means no leaf decoration has been assigned yet.
+    pub leaf_group: Option<usize>,
 }
 
 impl Branch {
@@ -47,6 +50,7 @@ impl Branch {
             original_dir: dir,
             child_count: 0,
             generation,
+            leaf_group: None,
         }
     }
 

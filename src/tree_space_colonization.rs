@@ -2,8 +2,11 @@ use crate::{
     attractor::Attractor,
     branch::Branch,
     math_utils::{dist_to_line, rotate_point},
-    shape::{CubeShape, Shape},
-    voxel::{LeafSetting, VoxelDefinitions, VoxelMapping, VoxelizeSettings},
+    shape::Shape,
+    voxel::{
+        BranchRootSizeIncreaser, BranchSizeSetting, LeafDecoration, LeafShape, VoxelDefinitions,
+        VoxelMapping,
+    },
 };
 
 use glam::{IVec3, Quat, Vec2, Vec3, ivec3, vec2, vec3};
@@ -40,6 +43,12 @@ pub enum ValueOrRangeF32 {
 }
 
 impl ValueOrRangeF32 {
+    pub fn max(&self) -> f32 {
+        match self {
+            ValueOrRangeF32::Value(v) => *v,
+            ValueOrRangeF32::Range(_, m) => *m,
+        }
+    }
     pub fn get(&self, rng: &mut ChaCha8Rng) -> f32 {
         match self {
             ValueOrRangeF32::Value(v) => *v,
@@ -52,23 +61,37 @@ impl ValueOrRangeF32 {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SpaceColonizationStep {
-    /// how many times to run the space colonization algorithm
+    /// Grow branches in a fixed direction (trunk building)
     GrowDirection(GrowDirection),
+    /// Run space-colonization growth toward existing attractors
     GrowToAttractors(GrowToAttractors),
+    /// Spawn attractors at a fixed world position
     SpawnAttractor(SpawnAttractors),
+    /// Spawn attractor shapes relative to each current tip branch
+    SpawnAttractorOnBranches(SpawnAttractorsOnBranches),
+    /// Remove all existing attractors
+    ClearAttractors,
+    /// Assign a leaf shape to branches matching the selector.
+    ///
+    /// Only branches that have not yet been assigned a leaf group are
+    /// considered, unless `overwrite` is true.  Run this immediately after
+    /// the growth step that produced the branches you want to decorate.
+    SpawnLeaves(SpawnLeavesStep),
 }
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpaceColonizationSettings {
-    // how the initial branches will spawn
+    /// how the initial branches will spawn
     pub trunk_settings: TrunkSettings,
     /// steps, how to grow/shape/modify the tree
     pub build_steps: Vec<SpaceColonizationStep>,
     /// what voxels to use for bark
     pub bark_decorator: BarkDecorator,
-    /// how to spawn the leafs
-    pub voxelize_settings: VoxelizeSettings,
+    /// branch voxel thickness (global, can vary by generation)
+    pub branch_size_setting: BranchSizeSetting,
+    /// optional extra width added near the root
+    pub branch_root_size_increaser: Option<BranchRootSizeIncreaser>,
 }
 
 #[derive(Clone, Debug)]
@@ -167,24 +190,83 @@ pub struct SpawnAttractors {
 
 impl SpawnAttractors {}
 
+/// Assign a leaf decoration to a set of branches at this point in the build.
+///
+/// The decoration is stored as a `LeafGroup` on the generator and referenced
+/// by index from each selected branch, so the shape definition is shared
+/// rather than cloned per branch.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct SpawnLeavesStep {
+    /// Which branches to assign leaves to.
+    pub selector: BranchSelector,
+    /// The voxel shape to place at each qualifying branch tip.
+    pub shape: LeafShape,
+    /// How to colour the leaf voxels.
+    pub decoration: LeafDecoration,
+    /// If true, overwrite any leaf group already assigned to a branch.
+    /// If false (default), only undecorated branches are affected.
+    #[serde(default)]
+    pub overwrite: bool,
+}
+
+/// Which branches to use as anchor points when spawning per-branch attractors.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum BranchSelector {
+    /// Only branches with no children (current tips).
+    Tips,
+    /// Branches whose generation is exactly this value.
+    ExactGeneration(i32),
+    /// Branches whose generation equals or exceeds this value.
+    MinGeneration(i32),
+    /// Branches whose generation is at most this value.
+    MaxGeneration(i32),
+    /// Branches whose Y position is at or above this world-space value.
+    MinHeight(f32),
+    /// Branches whose Y position is at or below this world-space value.
+    MaxHeight(f32),
+    /// Tips that also satisfy a minimum generation.
+    TipsWithMinGeneration(i32),
+    /// Tips that also satisfy an exact generation.
+    TipsWithExactGeneration(i32),
+}
+
+/// Offset direction when placing the attractor shape relative to a branch tip.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum BranchOffsetDir {
+    /// Offset along the branch's own direction vector.
+    BranchForward,
+    /// Offset straight up in world space (Y+).
+    WorldUp,
+    /// Offset straight down in world space (Y-).
+    WorldDown,
+    /// Offset along the branch direction, projected flat onto the XZ plane and
+    /// then normalised — useful for palm fronds that fan out horizontally.
+    BranchForwardFlat,
+}
+
+/// Spawn one copy of an attractor shape per selected branch, placed relative
+/// to that branch's tip.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct SpawnAttractorsOnBranches {
+    /// Which branches act as origins for the spawned shapes.
+    pub selector: BranchSelector,
+    /// How far along `offset_dir` from the branch tip to place the shape centre.
+    pub offset_distance: f32,
+    /// Direction to offset from the branch tip.
+    pub offset_dir: BranchOffsetDir,
+    /// The attractor volume shape.
+    pub shape: Shape,
+    /// Density / jitter settings for attractor placement inside the shape.
+    pub attractor_spacing: AttractorSpacing,
+}
+
 impl SpaceColonizationSettings {
     pub fn make_generator(&self, seed: u64) -> TreeGeneratorSpaceColonization {
-        let mut generator = TreeGeneratorSpaceColonization::new(&self, seed);
-
-        let attractor_settings = AttractorSpacing::default();
-
-        // generator.spawn_attractors_from_shape(
-        //     vec3(0., 5. + 8.0, 0.),
-        //     Shape::Box(BoxShape {
-        //         size_x: 15.0,
-        //         size_y: 10.0,
-        //         size_z: 15.,
-        //     }),
-        //     &self,
-        //     &attractor_settings,
-        // );
-        // generator.build_trunk(&self);
-        generator
+        TreeGeneratorSpaceColonization::new(&self, seed)
     }
 
     pub fn resolve_voxel_definitions(&mut self, voxel_definitions: &VoxelDefinitions) {
@@ -193,13 +275,10 @@ impl SpaceColonizationSettings {
                 voxel_mapping.resolve(voxel_definitions);
             }
         }
-        match &mut self.voxelize_settings.leaf_settings {
-            LeafSetting::None => (),
-            LeafSetting::BranchIsLeaf(_leaf_classifier) => (),
-            LeafSetting::Shape {
-                shape: _,
-                decoration,
-            } => decoration.resolve(voxel_definitions),
+        for step in self.build_steps.iter_mut() {
+            if let SpaceColonizationStep::SpawnLeaves(s) = step {
+                s.decoration.resolve(voxel_definitions);
+            }
         }
     }
 }
@@ -214,7 +293,8 @@ impl Default for SpaceColonizationSettings {
                 leaf_attraction_dist: 5.,
             })],
             bark_decorator: BarkDecorator::Single(VoxelMapping::default()),
-            voxelize_settings: VoxelizeSettings::default(),
+            branch_size_setting: BranchSizeSetting::default(),
+            branch_root_size_increaser: None,
             trunk_settings: TrunkSettings::default(),
         }
     }
@@ -253,6 +333,25 @@ pub struct TreeGeneratorSpaceColonization {
     pub min_bounds: Vec3,
     pub max_bounds: Vec3,
     pub rng: ChaCha8Rng,
+    /// All leaf group definitions registered via `SpawnLeaves` steps.
+    /// Each entry is `(shape, decoration)`; branches reference by index.
+    pub leaf_groups: Vec<(LeafShape, LeafDecoration)>,
+}
+
+/// Returns true if `branch` matches the given selector.
+/// Centralised here so all steps (SpawnLeaves, SpawnAttractorOnBranches, etc.)
+/// use identical logic.
+fn branch_selector_matches(selector: &BranchSelector, b: &Branch) -> bool {
+    match selector {
+        BranchSelector::Tips => b.child_count == 0,
+        BranchSelector::ExactGeneration(generation) => b.generation == *generation,
+        BranchSelector::MinGeneration(min) => b.generation >= *min,
+        BranchSelector::MaxGeneration(max) => b.generation <= *max,
+        BranchSelector::MinHeight(min_y) => b.pos.y >= *min_y,
+        BranchSelector::MaxHeight(max_y) => b.pos.y <= *max_y,
+        BranchSelector::TipsWithMinGeneration(min) => b.child_count == 0 && b.generation >= *min,
+        BranchSelector::TipsWithExactGeneration(g) => b.child_count == 0 && b.generation == *g,
+    }
 }
 
 impl TreeGeneratorSpaceColonization {
@@ -271,6 +370,7 @@ impl TreeGeneratorSpaceColonization {
                 original_dir: dir,
                 child_count: 0,
                 generation: 0,
+                leaf_group: None,
             };
             branches.push(root);
         }
@@ -281,6 +381,7 @@ impl TreeGeneratorSpaceColonization {
             min_bounds: Vec3::splat(0f32),
             max_bounds: Vec3::splat(0f32),
             rng,
+            leaf_groups: Vec::new(),
         }
     }
 
@@ -306,12 +407,73 @@ impl TreeGeneratorSpaceColonization {
             SpaceColonizationStep::GrowDirection(grow_trunk) => {
                 self.grow_trunk(grow_trunk);
             }
+            SpaceColonizationStep::SpawnAttractorOnBranches(s) => {
+                self.spawn_attractors_on_branches(s);
+            }
+            SpaceColonizationStep::SpawnLeaves(s) => {
+                self.spawn_leaves(s);
+            }
+            SpaceColonizationStep::ClearAttractors => {
+                self.attractors.clear();
+            }
         }
     }
 
     pub fn execute_all_step(&mut self, settings: &SpaceColonizationSettings) {
         for step in settings.build_steps.iter() {
             self.execute_step(step, settings);
+        }
+    }
+
+    /// Spawn one attractor shape per selected branch, offset from that branch
+    /// along the configured direction.
+    pub fn spawn_attractors_on_branches(&mut self, s: &SpawnAttractorsOnBranches) {
+        // Snapshot tip positions/dirs so we don't hold a borrow on self.branches.
+        let origins: Vec<(Vec3, Vec3)> = self
+            .branches
+            .iter()
+            .filter(|b| branch_selector_matches(&s.selector, b))
+            .map(|b| (b.pos, b.dir))
+            .collect();
+
+        for (pos, dir) in origins {
+            let offset_dir = match &s.offset_dir {
+                BranchOffsetDir::BranchForward => dir.normalize_or(Vec3::Y),
+                BranchOffsetDir::WorldUp => Vec3::Y,
+                BranchOffsetDir::BranchForwardFlat => {
+                    Vec3::new(dir.x, 0.0, dir.z).normalize_or(Vec3::X)
+                }
+                BranchOffsetDir::WorldDown => Vec3::NEG_Y,
+            };
+            let shape_centre = pos + offset_dir * s.offset_distance;
+            s.shape.generate(
+                shape_centre,
+                &mut self.attractors,
+                &s.attractor_spacing,
+                &mut self.rng,
+            );
+        }
+    }
+
+    /// Assign a leaf group to all branches matching the selector.
+    ///
+    /// Registers a new `LeafGroup` (shape + decoration) in `self.leaf_groups`,
+    /// then sets `branch.leaf_group = Some(group_index)` on every qualifying
+    /// branch.  By default only undecorated branches are touched; set
+    /// `step.overwrite = true` to re-decorate already-assigned branches.
+    pub fn spawn_leaves(&mut self, step: &SpawnLeavesStep) {
+        let group_index = self.leaf_groups.len();
+        self.leaf_groups
+            .push((step.shape.clone(), step.decoration.clone()));
+
+        for branch in self.branches.iter_mut() {
+            let qualifies = branch_selector_matches(&step.selector, branch);
+            if !qualifies {
+                continue;
+            }
+            if branch.leaf_group.is_none() || step.overwrite {
+                branch.leaf_group = Some(group_index);
+            }
         }
     }
 

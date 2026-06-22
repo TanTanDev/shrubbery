@@ -66,7 +66,7 @@ async fn main() {
             height: 2.0,
             additional_size: 2.0,
         }),
-        leaf_settings: LeafSetting::Shape(LeafShape::Sphere { r: 1.7 }),
+        leaf_settings: LeafSetting::Shape(LeafShape::Sphere { radius: 1.7 }),
         // leaf_settings: LeafSetting::Shape(LeafShape::Sphere { r: 2.7 }),
     };
 

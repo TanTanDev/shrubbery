@@ -1,0 +1,61 @@
+// Tree 2: classic upright conifer, whorls drooping down.
+// Tight narrow attractor cone → layers taper from wide base to sharp apex.
+(
+    trunk_settings: (
+        count: 1,
+        root_pos: (0.0, 0.0, 0.0),
+        branch_len: Value(4.0),
+        initial_dir: Random(
+            y_rotation_range: Range(0, 360),
+            z_rotation_max: Range(0, 4),
+        ),
+    ),
+    build_steps: [
+        GrowDirection((
+            times: Value(8),
+            // trunk_growth_direction: Normal,
+            trunk_growth_direction: GravityLean(strength: 0.2),
+            branch_len: Value(3.5),
+        )),
+        SpawnAttractor((
+            pos: (0.0, 20.0, 0.0),
+            // Narrow cone: wide at base, pinched at top
+            shape: Cube((size_x: 8.0, size_y: 20.0, size_z: 8.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 0.6),
+        )),
+        GrowToAttractors((
+            times: Value(1),
+            branch_len: Value(1.0),
+            kill_distance: 2.5,
+            leaf_attraction_dist: 5.0,
+        )),
+        SpawnLeaves((
+            selector: Tips,
+            shape: ConiferWhorl((
+                max_branch_length: 16.0,
+                max_branch_width: 5.5,
+                branch_sharpness: 0.6,
+                branch_thickness: 1,
+                branch_droop: 0.6,
+                tip_lift: 0.0,
+                rotation_step: 2.39996,
+                length_jitter_ratio: 0.15,
+                taper: Height(min_y: 2.0, max_y: 46.0),
+                arm_facing: Horizontal,
+            )),
+            decoration: Gradient((
+                axis: Y,
+                modulation: Some(Random(percent_offset: 0.08)),
+                steps: [
+                    LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                ],
+            )),
+        )),
+    ],
+    bark_decorator: Single(VoxelMapping(name: "bark")),
+    branch_size_setting: Generation(sizes: [1.0, 1.0]),
+    // branch_root_size_increaser: Some((height: 2.0, additional_size: 1.5)),
+    branch_root_size_increaser: None,
+)

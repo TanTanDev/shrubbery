@@ -98,9 +98,9 @@ fn setup(
     let voxel_materials: Vec<VoxelMaterial> = [
         ("bark", BROWN),
         // ("leaf_bright", GREEN),
-        ("leaf_bright", Srgba::BLACK.with_green(0.6)),
+        ("leaf_bright", Srgba::BLACK.with_green(0.7)),
         ("leaf_mid", Srgba::BLACK.with_green(0.5)),
-        ("leaf_dark", Srgba::BLACK.with_green(0.4)),
+        ("leaf_dark", Srgba::BLACK.with_green(0.3)),
     ]
     .into_iter()
     .map(Into::<VoxelMaterial>::into)
@@ -134,7 +134,10 @@ fn setup(
     ));
 
     commands.insert_resource(TreeAssetHandle(
-        asset_server.load("space_colonizers/fir.tree.space_colonizer.ron"),
+        // asset_server.load("space_colonizers/oak.tree.space_colonizer.ron"),
+        // asset_server.load("space_colonizers/conifer_demo.tree.space_colonizer.ron"),
+        asset_server.load("space_colonizers/4.tree.space_colonizer.ron"),
+        // asset_server.load("space_colonizers/7.tree.space_colonizer.ron"),
     ));
 
     commands.insert_resource(AmbientLight {
