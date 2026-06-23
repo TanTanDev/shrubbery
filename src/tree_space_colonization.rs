@@ -144,6 +144,7 @@ pub struct GrowToAttractors {
     pub kill_distance: f32,
     /// how close an attractor has to be to pull branch
     pub leaf_attraction_dist: f32,
+    pub decoration: LeafDecoration,
 }
 
 #[derive(Clone, Debug)]
@@ -315,6 +316,9 @@ impl SpaceColonizationSettings {
             if let SpaceColonizationStep::GrowDirection(grow_dir) = step {
                 grow_dir.decoration.resolve(voxel_definitions);
             }
+            if let SpaceColonizationStep::GrowToAttractors(grow_to_attractors) = step {
+                grow_to_attractors.decoration.resolve(voxel_definitions);
+            }
         }
     }
 }
@@ -327,6 +331,7 @@ impl Default for SpaceColonizationSettings {
                 branch_len: ValueOrRangeF32::Value(5.0),
                 kill_distance: 0.3,
                 leaf_attraction_dist: 5.,
+                decoration: LeafDecoration::Single(VoxelMapping::default()),
             })],
             bark_decorator: BarkDecorator::Single(VoxelMapping::default()),
             branch_size_setting: BranchSizeSetting::default(),
@@ -636,6 +641,9 @@ impl TreeGeneratorSpaceColonization {
         settings: &SpaceColonizationSettings,
         grow_to_attractors: &GrowToAttractors,
     ) {
+        let group_index = self.branch_decorations.len();
+        self.branch_decorations
+            .push(grow_to_attractors.decoration.clone());
         for attractor in self.attractors.iter_mut() {
             let mut closest_branch: Option<usize> = None;
             let mut closest_dist = 999999.;
@@ -685,7 +693,7 @@ impl TreeGeneratorSpaceColonization {
         {
             branch.dir = branch.dir.normalize();
             // todo: fix thickness
-            let new_branch = branch.next(
+            let mut new_branch = branch.next(
                 branch_index,
                 grow_to_attractors.branch_len.get(&mut self.rng),
                 true,
@@ -694,6 +702,7 @@ impl TreeGeneratorSpaceColonization {
                 1.0,
                 1,
             );
+            new_branch.decoration_group = Some(group_index);
             branch.child_count += 1;
             Self::update_bound(
                 &mut self.min_bounds,
