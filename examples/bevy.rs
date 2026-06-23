@@ -96,7 +96,9 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let voxel_materials: Vec<VoxelMaterial> = [
-        ("bark", BROWN),
+        ("bark_bright", BROWN),
+        ("bark", BROWN.with_red(0.4)),
+        ("bark_dark", BROWN.with_red(0.3)),
         // ("leaf_bright", GREEN),
         ("leaf_bright", Srgba::BLACK.with_green(0.7)),
         ("leaf_mid", Srgba::BLACK.with_green(0.5)),
@@ -136,6 +138,7 @@ fn setup(
     commands.insert_resource(TreeAssetHandle(
         // asset_server.load("space_colonizers/oak.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/conifer_demo.tree.space_colonizer.ron"),
+        // asset_server.load("space_colonizers/2.tree.space_colonizer.ron"),
         asset_server.load("space_colonizers/4.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/7.tree.space_colonizer.ron"),
     ));

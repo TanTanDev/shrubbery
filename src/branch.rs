@@ -7,6 +7,9 @@ pub struct Branch {
     pub pos: Vec3,
     pub parent_index: Option<usize>,
     pub dir: Vec3,
+
+    /// the thickness radius for making bark
+    pub thickness: f32,
     /// todo: remove? might not be needed
     pub original_dir: Vec3,
     /// how many attractors are pulling this node
@@ -15,9 +18,14 @@ pub struct Branch {
     pub child_count: i32,
     /// what iteration this branch was made
     pub generation: i32,
+    /// what iteration this branch was made
+    pub generation_total: i32,
     /// Index into the generator's `leaf_groups` vec, set by a `SpawnLeaves`
     /// build step.  `None` means no leaf decoration has been assigned yet.
     pub leaf_group: Option<usize>,
+
+    // todo name
+    pub decoration_group: Option<usize>,
 }
 
 impl Branch {
@@ -28,6 +36,8 @@ impl Branch {
         branch_len: f32,
         is_new_generation: bool,
         trunk_growth_dir: &TrunkGrowthDirection,
+        thickness: f32,
+        generation_total: i32,
     ) -> Self {
         let mut generation = self.generation;
         if is_new_generation {
@@ -51,6 +61,9 @@ impl Branch {
             child_count: 0,
             generation,
             leaf_group: None,
+            thickness,
+            decoration_group: None,
+            generation_total,
         }
     }
 

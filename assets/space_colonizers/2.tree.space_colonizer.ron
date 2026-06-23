@@ -7,15 +7,15 @@
         branch_len: Value(4.0),
         initial_dir: Random(
             y_rotation_range: Range(0, 360),
-            z_rotation_max: Range(0, 4),
+            z_rotation_max: Range(4, 4),
         ),
     ),
     build_steps: [
         GrowDirection((
-            times: Value(8),
+            times: Value(5),
             // trunk_growth_direction: Normal,
-            trunk_growth_direction: GravityLean(strength: 0.2),
-            branch_len: Value(3.5),
+            trunk_growth_direction: GravityLean(strength: 0.5),
+            branch_len: Value(6.5),
         )),
         SpawnAttractor((
             pos: (0.0, 20.0, 0.0),
@@ -25,7 +25,7 @@
         )),
         GrowToAttractors((
             times: Value(1),
-            branch_len: Value(1.0),
+            branch_len: Value(8.0),
             kill_distance: 2.5,
             leaf_attraction_dist: 5.0,
         )),

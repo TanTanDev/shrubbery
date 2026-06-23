@@ -100,6 +100,39 @@ pub struct GrowDirection {
     pub times: ValueOrRangeU32,
     pub trunk_growth_direction: TrunkGrowthDirection,
     pub branch_len: ValueOrRangeF32,
+    pub branch_thickness: BranchThickness,
+    pub decoration: LeafDecoration,
+}
+// use some form of mapping
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum BranchThickness {
+    ValueOrRange(ValueOrRangeF32),
+    IterationScale {
+        min: ValueOrRangeF32,
+        max: ValueOrRangeF32,
+    },
+}
+
+impl BranchThickness {
+    pub fn get(&self, i: u32, i_max: u32, rng: &mut ChaCha8Rng) -> f32 {
+        match self {
+            BranchThickness::ValueOrRange(value) => value.get(rng),
+            BranchThickness::IterationScale { min, max } => {
+                let min = min.get(rng);
+                let max = max.get(rng);
+
+                let t = if i_max <= 1 {
+                    1.0
+                } else {
+                    i as f32 / (i_max - 1) as f32
+                };
+
+                min + (max - min) * t
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -279,6 +312,9 @@ impl SpaceColonizationSettings {
             if let SpaceColonizationStep::SpawnLeaves(s) = step {
                 s.decoration.resolve(voxel_definitions);
             }
+            if let SpaceColonizationStep::GrowDirection(grow_dir) = step {
+                grow_dir.decoration.resolve(voxel_definitions);
+            }
         }
     }
 }
@@ -336,6 +372,8 @@ pub struct TreeGeneratorSpaceColonization {
     /// All leaf group definitions registered via `SpawnLeaves` steps.
     /// Each entry is `(shape, decoration)`; branches reference by index.
     pub leaf_groups: Vec<(LeafShape, LeafDecoration)>,
+    // todo proper naming
+    pub branch_decorations: Vec<LeafDecoration>,
 }
 
 /// Returns true if `branch` matches the given selector.
@@ -360,7 +398,7 @@ impl TreeGeneratorSpaceColonization {
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
         let mut branches = Vec::new();
 
-        for _i in 0..settings.trunk_settings.count {
+        for i in 0..settings.trunk_settings.count {
             let dir = settings.trunk_settings.initial_dir.get(&mut rng);
             let root = Branch {
                 pos: settings.trunk_settings.root_pos,
@@ -369,8 +407,11 @@ impl TreeGeneratorSpaceColonization {
                 attractors_count: 0,
                 original_dir: dir,
                 child_count: 0,
-                generation: 0,
+                generation: i as i32,
                 leaf_group: None,
+                thickness: 1.0,
+                decoration_group: None,
+                generation_total: settings.trunk_settings.count as i32,
             };
             branches.push(root);
         }
@@ -382,6 +423,7 @@ impl TreeGeneratorSpaceColonization {
             max_bounds: Vec3::splat(0f32),
             rng,
             leaf_groups: Vec::new(),
+            branch_decorations: Vec::new(),
         }
     }
 
@@ -504,13 +546,19 @@ impl TreeGeneratorSpaceColonization {
     }
 
     /// expand bounding if branch_pos is outside
-    pub fn update_bound(min_bounds: &mut Vec3, max_bounds: &mut Vec3, branch_pos: Vec3) {
-        min_bounds.x = min_bounds.x.min(branch_pos.x);
-        min_bounds.y = min_bounds.y.min(branch_pos.y);
-        min_bounds.z = min_bounds.z.min(branch_pos.z);
-        max_bounds.x = max_bounds.x.max(branch_pos.x);
-        max_bounds.y = max_bounds.y.max(branch_pos.y);
-        max_bounds.z = max_bounds.z.max(branch_pos.z);
+    pub fn update_bound(
+        min_bounds: &mut Vec3,
+        max_bounds: &mut Vec3,
+        branch_pos: Vec3,
+        // expand if a branch has a thickness
+        radius: f32,
+    ) {
+        min_bounds.x = min_bounds.x.min(branch_pos.x - radius);
+        min_bounds.y = min_bounds.y.min(branch_pos.y - radius);
+        min_bounds.z = min_bounds.z.min(branch_pos.z - radius);
+        max_bounds.x = max_bounds.x.max(branch_pos.x + radius);
+        max_bounds.y = max_bounds.y.max(branch_pos.y + radius);
+        max_bounds.z = max_bounds.z.max(branch_pos.z + radius);
     }
 
     /// spawn initial branches based on settings.
@@ -551,17 +599,33 @@ impl TreeGeneratorSpaceColonization {
     // }
     // }
     pub fn grow_trunk(&mut self, grow_trunk: &GrowDirection) {
-        for _i in 0..grow_trunk.times.get(&mut self.rng) {
+        let grow_times = grow_trunk.times.get(&mut self.rng);
+
+        let group_index = self.branch_decorations.len();
+        self.branch_decorations.push(grow_trunk.decoration.clone());
+        for i in 0..grow_times {
+            let thickness = grow_trunk
+                .branch_thickness
+                .get(i, grow_times, &mut self.rng);
+
             // todo: instead find the ends of all root branches
             let last_index = self.branches.len() - 1;
-            let new_branch = self.branches[last_index].next(
+            let mut new_branch = self.branches[last_index].next(
                 last_index,
                 grow_trunk.branch_len.get(&mut self.rng),
-                false,
+                true,
                 &grow_trunk.trunk_growth_direction,
+                thickness,
+                grow_times as i32,
             );
+            new_branch.decoration_group = Some(group_index);
             self.branches[last_index].child_count += 1;
-            Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
+            Self::update_bound(
+                &mut self.min_bounds,
+                &mut self.max_bounds,
+                new_branch.pos,
+                thickness,
+            );
             self.branches.push(new_branch);
         }
     }
@@ -620,14 +684,24 @@ impl TreeGeneratorSpaceColonization {
             .filter(|(_, branch)| branch.attractors_count > 0)
         {
             branch.dir = branch.dir.normalize();
+            // todo: fix thickness
             let new_branch = branch.next(
                 branch_index,
                 grow_to_attractors.branch_len.get(&mut self.rng),
                 true,
                 &TrunkGrowthDirection::Normal,
+                // todo: proper thickness
+                1.0,
+                1,
             );
             branch.child_count += 1;
-            Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
+            Self::update_bound(
+                &mut self.min_bounds,
+                &mut self.max_bounds,
+                new_branch.pos,
+                // todo: use the proper thickness
+                1.0,
+            );
             to_add.push(new_branch);
             branch.reset();
         }

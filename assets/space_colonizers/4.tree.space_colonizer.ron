@@ -16,7 +16,30 @@
         GrowDirection((
             times: Value(9),
             trunk_growth_direction: GravityLean(strength: 0.35),
-            branch_len: Value(4.5),
+            branch_len: Value(9.0),
+            branch_thickness: IterationScale(
+                min: Value(5.0),
+                max: Value(1.0)
+            ),
+            // decoration: Randomized(
+            // [
+            //     (weight: 7, voxel_mapping: VoxelMapping(name: "bark")),
+            //     (weight: 1, voxel_mapping: VoxelMapping(name: "leaf_dark"))
+            // ]),
+            decoration: Gradient((
+                axis: Y,
+                // modulation: Some(Random(percent_offset: 0.18)),
+                modulation: None,
+                steps: [
+                    // LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                    // LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    // LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                    LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "bark_dark")),
+                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "bark")),
+                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "bark_bright")),
+                ],
+            )),
+            // decoration: Single(VoxelMapping(name: "leaf_bright")),
         )),
         // Spawn attractors straight up from trunk tip — pulls sub-branches upward
         SpawnAttractorOnBranches((
@@ -29,7 +52,7 @@
         )),
         GrowToAttractors((
             times: Value(1),
-            branch_len: Range(4.0, 12.0),
+            branch_len: Range(8.0, 12.0),
             kill_distance: 2.5,
             leaf_attraction_dist: 8.0,
         )),
@@ -91,5 +114,6 @@
     ],
     bark_decorator: Single(VoxelMapping(name: "bark")),
     branch_size_setting: Generation(sizes: [1.0, 1.0]),
-    branch_root_size_increaser: Some((height: 12.0, additional_size: 2.5)),
+    branch_root_size_increaser: None,
+    // branch_root_size_increaser: Some((height: 12.0, additional_size: 2.5)),
 )

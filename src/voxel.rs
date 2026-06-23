@@ -119,6 +119,113 @@ impl LeafDecoration {
             }
         }
     }
+
+    fn get_voxel_id(
+        &self,
+        rng: &mut ChaCha8Rng,
+        sample_pos: Vec3,
+        branch_pos: Vec3,
+        arm_length: f32,
+    ) -> VoxelId {
+        match self {
+            LeafDecoration::Single(m) => m.id,
+            LeafDecoration::Randomized(items) => items
+                .choose_weighted(rng, |i| i.weight)
+                .map(|v| v.voxel_mapping.id)
+                .unwrap_or_default(),
+            LeafDecoration::Gradient(g) => {
+                // Re-use the same axis/modulation path as the Sphere gradient so
+                // that existing RON configs work unchanged.
+                let leaf_v = match g.axis {
+                    Axis::X => branch_pos.x,
+                    Axis::Y => branch_pos.y,
+                    Axis::Z => branch_pos.z,
+                };
+                let pos_v = match g.axis {
+                    Axis::X => sample_pos.x,
+                    Axis::Y => sample_pos.y,
+                    Axis::Z => sample_pos.z,
+                };
+                let bounds = (leaf_v - arm_length, leaf_v + arm_length);
+                let mut percent = percent_in_range(pos_v, bounds.0, bounds.1);
+
+                if let Some(modulation) = &g.modulation {
+                    percent += match modulation {
+                        LeafGradientModulation::Random { percent_offset } => {
+                            rng.random_range(-*percent_offset..*percent_offset)
+                        }
+                        LeafGradientModulation::Wave {
+                            frequency,
+                            amplitude,
+                        } => {
+                            let coord = (sample_pos.x + sample_pos.z) * frequency;
+                            coord.sin() * amplitude
+                        }
+                    };
+                }
+                percent = percent.clamp(0.0, 1.0);
+
+                let mut selected = VoxelId::default();
+                for step in g.steps.iter() {
+                    if percent > step.percent {
+                        continue;
+                    }
+                    selected = step.voxel_mapping.id;
+                    break;
+                }
+                selected
+            }
+        }
+    }
+
+    fn get_voxel_id_percent(
+        &self,
+        rng: &mut ChaCha8Rng,
+        sample_pos: Vec3,
+        mut percent: f32,
+    ) -> VoxelId {
+        match self {
+            LeafDecoration::Single(m) => m.id,
+            LeafDecoration::Randomized(items) => items
+                .choose_weighted(rng, |i| i.weight)
+                .map(|v| v.voxel_mapping.id)
+                .unwrap_or_default(),
+            LeafDecoration::Gradient(g) => {
+                if let Some(modulation) = &g.modulation {
+                    percent += match modulation {
+                        LeafGradientModulation::Random { percent_offset } => {
+                            rng.random_range(-*percent_offset..*percent_offset)
+                        }
+                        LeafGradientModulation::Wave {
+                            frequency,
+                            amplitude,
+                        } => {
+                            let coord = (sample_pos.x + sample_pos.z) * frequency;
+                            coord.sin() * amplitude
+                        }
+                    };
+                }
+                percent = percent.clamp(0.0, 1.0);
+
+                // let mut selected = VoxelId::default();
+                let selected = g
+                    .steps
+                    .iter()
+                    .find(|s| percent <= s.percent)
+                    .or_else(|| g.steps.last())
+                    .map(|s| s.voxel_mapping.id)
+                    .unwrap_or_default();
+                // for step in g.steps.iter().find(|s| percent < step) {
+                // for step in g.steps.iter() {
+                //     if percent > step.percent {
+                //         continue;
+                //     }
+                //     selected = step.voxel_mapping.id;
+                // }
+                selected
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -332,30 +439,47 @@ fn process_voxel(
         .map(|(i, _)| i)
         .collect();
 
-    for group_idx in sphere_group_indices {
-        if generate_sphere_leaf(sample_pos, pos, shrubbery, group_idx, &mut *voxels) {
+    for group_index in sphere_group_indices {
+        if generate_sphere_leaf(sample_pos, pos, shrubbery, group_index, &mut *voxels) {
             return; // cell claimed by a leaf — don't also render bark here
         }
     }
 
-    // Bark rendering.
+    // Bark
     let (dist_to_branch, closest_branch_index) = shrubbery.distance_to_branch(sample_pos);
-    let mut size = match &settings.branch_size_setting {
-        BranchSizeSetting::Value { size: distance } => *distance,
-        BranchSizeSetting::Generation { sizes: distances } => {
-            let closest_branch = &shrubbery.branches[closest_branch_index];
-            let index = closest_branch.generation.min(distances.len() as i32 - 1);
-            *distances.get(index as usize).unwrap_or(&f32::MIN)
-        }
-    };
+    let closest_branch = &shrubbery.branches[closest_branch_index];
+    let mut size = closest_branch.thickness;
+    // let mut size = match &settings.branch_size_setting {
+    //     BranchSizeSetting::Value { size: distance } => *distance,
+    //     BranchSizeSetting::Generation { sizes: distances } => {
+    //         let closest_branch = &shrubbery.branches[closest_branch_index];
+    //         let index = closest_branch.generation.min(distances.len() as i32 - 1);
+    //         *distances.get(index as usize).unwrap_or(&f32::MIN)
+    //     }
+    // };
     if let Some(increaser) = &settings.branch_root_size_increaser {
         let h_m = 1.0 - (sample_pos.y / increaser.height.max(0.001)).min(1.0);
         size += h_m * increaser.additional_size;
     }
     if dist_to_branch < size + EPSILON {
-        let bark_id = match &settings.bark_decorator {
+        // overwrite
+
+        let mut bark_id = match &settings.bark_decorator {
             BarkDecorator::Single(voxel_mapping) => voxel_mapping.id,
         };
+
+        if let Some(group_id) = closest_branch.decoration_group {
+            let decoration = shrubbery.branch_decorations.get(group_id).unwrap();
+
+            let mut branch_rng =
+                rand_chacha::ChaCha8Rng::seed_from_u64(closest_branch_index as u64);
+
+            let mut generation_percent =
+                closest_branch.generation as f32 / closest_branch.generation_total as f32;
+            generation_percent = generation_percent.clamp(0.0, 1.0);
+            bark_id =
+                decoration.get_voxel_id_percent(&mut branch_rng, sample_pos, generation_percent);
+        }
         voxels.push((
             ivec3(
                 sample_pos.x as i32,
@@ -532,14 +656,8 @@ fn voxelize_conifer_whorls(
                     );
                     let sample_pos = vec3(world_x, world_y, world_z);
 
-                    let voxel_id = resolve_whorl_decoration(
-                        decoration,
-                        &mut branch_rng,
-                        normalized_dist,
-                        sample_pos,
-                        info.pos,
-                        arm_length,
-                    );
+                    let voxel_id =
+                        decoration.get_voxel_id(&mut branch_rng, sample_pos, info.pos, arm_length);
 
                     voxels.push((grid_pos, voxel_id));
                 }
@@ -553,64 +671,64 @@ fn voxelize_conifer_whorls(
 /// `normalized_dist` is 0.0 at the branch centre, 1.0 at the arm tip.
 /// `sample_pos` / `branch_pos` / `arm_length` are forwarded to Gradient so it
 /// can re-use the existing axis/modulation logic.
-fn resolve_whorl_decoration(
-    decoration: &LeafDecoration,
-    rng: &mut ChaCha8Rng,
-    normalized_dist: f32,
-    sample_pos: Vec3,
-    branch_pos: Vec3,
-    arm_length: f32,
-) -> VoxelId {
-    match decoration {
-        LeafDecoration::Single(m) => m.id,
-        LeafDecoration::Randomized(items) => items
-            .choose_weighted(rng, |i| i.weight)
-            .map(|v| v.voxel_mapping.id)
-            .unwrap_or_default(),
-        LeafDecoration::Gradient(g) => {
-            // Re-use the same axis/modulation path as the Sphere gradient so
-            // that existing RON configs work unchanged.
-            let leaf_v = match g.axis {
-                Axis::X => branch_pos.x,
-                Axis::Y => branch_pos.y,
-                Axis::Z => branch_pos.z,
-            };
-            let pos_v = match g.axis {
-                Axis::X => sample_pos.x,
-                Axis::Y => sample_pos.y,
-                Axis::Z => sample_pos.z,
-            };
-            let bounds = (leaf_v - arm_length, leaf_v + arm_length);
-            let mut percent = percent_in_range(pos_v, bounds.0, bounds.1);
+// fn resolve_whorl_decoration(
+//     decoration: &LeafDecoration,
+//     rng: &mut ChaCha8Rng,
+//     normalized_dist: f32,
+//     sample_pos: Vec3,
+//     branch_pos: Vec3,
+//     arm_length: f32,
+// ) -> VoxelId {
+//     match decoration {
+//         LeafDecoration::Single(m) => m.id,
+//         LeafDecoration::Randomized(items) => items
+//             .choose_weighted(rng, |i| i.weight)
+//             .map(|v| v.voxel_mapping.id)
+//             .unwrap_or_default(),
+//         LeafDecoration::Gradient(g) => {
+//             // Re-use the same axis/modulation path as the Sphere gradient so
+//             // that existing RON configs work unchanged.
+//             let leaf_v = match g.axis {
+//                 Axis::X => branch_pos.x,
+//                 Axis::Y => branch_pos.y,
+//                 Axis::Z => branch_pos.z,
+//             };
+//             let pos_v = match g.axis {
+//                 Axis::X => sample_pos.x,
+//                 Axis::Y => sample_pos.y,
+//                 Axis::Z => sample_pos.z,
+//             };
+//             let bounds = (leaf_v - arm_length, leaf_v + arm_length);
+//             let mut percent = percent_in_range(pos_v, bounds.0, bounds.1);
 
-            if let Some(modulation) = &g.modulation {
-                percent += match modulation {
-                    LeafGradientModulation::Random { percent_offset } => {
-                        rng.random_range(-*percent_offset..*percent_offset)
-                    }
-                    LeafGradientModulation::Wave {
-                        frequency,
-                        amplitude,
-                    } => {
-                        let coord = (sample_pos.x + sample_pos.z) * frequency;
-                        coord.sin() * amplitude
-                    }
-                };
-            }
-            percent = percent.clamp(0.0, 1.0);
+//             if let Some(modulation) = &g.modulation {
+//                 percent += match modulation {
+//                     LeafGradientModulation::Random { percent_offset } => {
+//                         rng.random_range(-*percent_offset..*percent_offset)
+//                     }
+//                     LeafGradientModulation::Wave {
+//                         frequency,
+//                         amplitude,
+//                     } => {
+//                         let coord = (sample_pos.x + sample_pos.z) * frequency;
+//                         coord.sin() * amplitude
+//                     }
+//                 };
+//             }
+//             percent = percent.clamp(0.0, 1.0);
 
-            let mut selected = VoxelId::default();
-            for step in g.steps.iter() {
-                if percent > step.percent {
-                    continue;
-                }
-                selected = step.voxel_mapping.id;
-                break;
-            }
-            selected
-        }
-    }
-}
+//             let mut selected = VoxelId::default();
+//             for step in g.steps.iter() {
+//                 if percent > step.percent {
+//                     continue;
+//                 }
+//                 selected = step.voxel_mapping.id;
+//                 break;
+//             }
+//             selected
+//         }
+//     }
+// }
 
 /// Test a single voxel cell against all branches in the given sphere leaf group.
 /// Returns true and emits the voxel if any branch's sphere covers this cell.
