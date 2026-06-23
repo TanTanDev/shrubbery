@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use glam::{IVec3, Quat, Vec2, Vec3, ivec3, vec2, vec3};
+use glam::{IVec3, Vec2, Vec3, ivec3, vec2, vec3};
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 #[cfg(feature = "serde")]
@@ -432,15 +432,11 @@ impl TreeGeneratorSpaceColonization {
         }
     }
 
-    pub fn execute_step(
-        &mut self,
-        step: &SpaceColonizationStep,
-        settings: &SpaceColonizationSettings,
-    ) {
+    pub fn execute_step(&mut self, step: &SpaceColonizationStep) {
         match step {
             SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
                 for _ in 0..grow_to_attractors.times.get(&mut self.rng) {
-                    self.grow(settings, grow_to_attractors);
+                    self.grow_to_attractors(grow_to_attractors);
                 }
             }
             SpaceColonizationStep::SpawnAttractor(spawn_attractor) => {
@@ -452,7 +448,7 @@ impl TreeGeneratorSpaceColonization {
                 );
             }
             SpaceColonizationStep::GrowDirection(grow_trunk) => {
-                self.grow_trunk(grow_trunk);
+                self.grow_direction(grow_trunk);
             }
             SpaceColonizationStep::SpawnAttractorOnBranches(s) => {
                 self.spawn_attractors_on_branches(s);
@@ -468,7 +464,7 @@ impl TreeGeneratorSpaceColonization {
 
     pub fn execute_all_step(&mut self, settings: &SpaceColonizationSettings) {
         for step in settings.build_steps.iter() {
-            self.execute_step(step, settings);
+            self.execute_step(step);
         }
     }
 
@@ -566,44 +562,7 @@ impl TreeGeneratorSpaceColonization {
         max_bounds.z = max_bounds.z.max(branch_pos.z + radius);
     }
 
-    /// spawn initial branches based on settings.
-    // pub fn build_trunk(&mut self, settings: &SpaceColonizationSettings) {
-    //     let mut root_end_pos = self.branches[0].pos;
-    //     let dir = self.branches[0].dir;
-    //     let mut consumed_height = 0.;
-    //     // the first root will be as long as it needs to be until it starts gaining attractions
-    //     let max_iterations = 1000;
-    //     'a: for _i in 0..max_iterations {
-    //         consumed_height += settings.branch_len;
-    //         root_end_pos += settings.branch_len * dir;
-    //         for leaf in self.attractors.iter() {
-    //             let dist = root_end_pos.distance(leaf.pos);
-    //             if dist < settings.leaf_attraction_dist {
-    //                 break 'a;
-    //             }
-    //         }
-    //     }
-
-    //     self.branches[0].child_count += 1;
-    //     let new_branch = self.branches[0].next(0, consumed_height, false);
-    //     Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
-    //     self.branches.push(new_branch);
-
-    // keep adding branches upwards until we reach the trunk_height
-    // let trunk_height = settings.min_trunk_height.get(&mut self.rng) as f32;
-    // for _i in 0..max_iterations {
-    //     if consumed_height > trunk_height {
-    //         break;
-    //     }
-    //     consumed_height += settings.branch_len;
-    //     let last_index = self.branches.len() - 1;
-    //     let new_branch = self.branches[last_index].next(last_index, settings.branch_len, false);
-    //     self.branches[last_index].child_count += 1;
-    //     Self::update_bound(&mut self.min_bounds, &mut self.max_bounds, new_branch.pos);
-    //     self.branches.push(new_branch);
-    // }
-    // }
-    pub fn grow_trunk(&mut self, grow_trunk: &GrowDirection) {
+    pub fn grow_direction(&mut self, grow_trunk: &GrowDirection) {
         let grow_times = grow_trunk.times.get(&mut self.rng);
 
         let group_index = self.branch_decorations.len();
@@ -636,11 +595,7 @@ impl TreeGeneratorSpaceColonization {
     }
 
     /// using space colonization algorithm, spawn new branches
-    pub fn grow(
-        &mut self,
-        settings: &SpaceColonizationSettings,
-        grow_to_attractors: &GrowToAttractors,
-    ) {
+    pub fn grow_to_attractors(&mut self, grow_to_attractors: &GrowToAttractors) {
         let group_index = self.branch_decorations.len();
         self.branch_decorations
             .push(grow_to_attractors.decoration.clone());

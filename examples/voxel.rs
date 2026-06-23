@@ -87,7 +87,7 @@ async fn main() {
                         }
                         Key::G => shrubbery.post_process_gravity(1.0),
                         Key::T => shrubbery.post_process_spin(3.14 * 0.5),
-                        Key::N => shrubbery.grow(&algo_settings),
+                        Key::N => shrubbery.grow_to_attractors(&algo_settings),
                         _ => dirty = false,
                     }
                     if dirty {

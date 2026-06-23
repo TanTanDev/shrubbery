@@ -1,20 +1,13 @@
-use std::{
-    collections::HashMap,
-    f32::consts::PI,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, f32::consts::PI, time::Duration};
 
 use bevy::{
-    color::palettes::{
-        css::{BROWN, DARK_GREEN, GREEN, WHITE, YELLOW},
-        tailwind::GREEN_500,
-    },
+    color::palettes::css::{BROWN, WHITE, YELLOW},
     light::CascadeShadowConfigBuilder,
     prelude::*,
 };
 use rand::{RngExt, SeedableRng};
 use shrubbery::{
-    bevy_fly_cam::{FlyCam, KeyBindings, MovementSettings, NoCameraPlayerPlugin, PlayerPlugin},
+    bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
     bevy_plugin::TreeSpaceColonizationAsset,
     prelude::SpaceColonizationPlugin,
     voxel::{VoxelDefinitions, VoxelId, voxelize},
