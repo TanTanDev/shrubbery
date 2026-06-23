@@ -56,6 +56,11 @@
             kill_distance: 2.5,
             leaf_attraction_dist: 8.0,
             decoration: Single(VoxelMapping(name: "bark")),
+            // branch_thickness: IterationScale(
+            //     min: Value(5.0),
+            //     max: Value(1.0)
+            // ),
+            branch_thickness: ValueOrRange(Value(2.0)),
         )),
         ClearAttractors,
         SpawnLeaves((
@@ -86,6 +91,7 @@
             kill_distance: 2.5,
             leaf_attraction_dist: 8.0,
             decoration: Single(VoxelMapping(name: "leaf_bright")),
+            branch_thickness: ValueOrRange(Value(1.0)),
         )),
         // ClearAttractors,
         // SpawnLeaves((

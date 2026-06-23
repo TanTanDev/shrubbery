@@ -145,6 +145,7 @@ pub struct GrowToAttractors {
     /// how close an attractor has to be to pull branch
     pub leaf_attraction_dist: f32,
     pub decoration: LeafDecoration,
+    pub branch_thickness: BranchThickness,
 }
 
 #[derive(Clone, Debug)]
@@ -332,6 +333,7 @@ impl Default for SpaceColonizationSettings {
                 kill_distance: 0.3,
                 leaf_attraction_dist: 5.,
                 decoration: LeafDecoration::Single(VoxelMapping::default()),
+                branch_thickness: BranchThickness::ValueOrRange(ValueOrRangeF32::Value(1.0)),
             })],
             bark_decorator: BarkDecorator::Single(VoxelMapping::default()),
             branch_size_setting: BranchSizeSetting::default(),
@@ -435,8 +437,9 @@ impl TreeGeneratorSpaceColonization {
     pub fn execute_step(&mut self, step: &SpaceColonizationStep) {
         match step {
             SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
-                for _ in 0..grow_to_attractors.times.get(&mut self.rng) {
-                    self.grow_to_attractors(grow_to_attractors);
+                let times = grow_to_attractors.times.get(&mut self.rng);
+                for i in 0..times {
+                    self.grow_to_attractors(grow_to_attractors, i, times);
                 }
             }
             SpaceColonizationStep::SpawnAttractor(spawn_attractor) => {
@@ -595,7 +598,12 @@ impl TreeGeneratorSpaceColonization {
     }
 
     /// using space colonization algorithm, spawn new branches
-    pub fn grow_to_attractors(&mut self, grow_to_attractors: &GrowToAttractors) {
+    pub fn grow_to_attractors(
+        &mut self,
+        grow_to_attractors: &GrowToAttractors,
+        call_i: u32,
+        call_times: u32,
+    ) {
         let group_index = self.branch_decorations.len();
         self.branch_decorations
             .push(grow_to_attractors.decoration.clone());
@@ -646,6 +654,11 @@ impl TreeGeneratorSpaceColonization {
             .enumerate()
             .filter(|(_, branch)| branch.attractors_count > 0)
         {
+            let mut branch_rng = rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64);
+            let thickness =
+                grow_to_attractors
+                    .branch_thickness
+                    .get(call_i, call_times, &mut branch_rng);
             branch.dir = branch.dir.normalize();
             // todo: fix thickness
             let mut new_branch = branch.next(
@@ -654,7 +667,7 @@ impl TreeGeneratorSpaceColonization {
                 true,
                 &TrunkGrowthDirection::Normal,
                 // todo: proper thickness
-                1.0,
+                thickness,
                 1,
             );
             new_branch.decoration_group = Some(group_index);
@@ -663,8 +676,7 @@ impl TreeGeneratorSpaceColonization {
                 &mut self.min_bounds,
                 &mut self.max_bounds,
                 new_branch.pos,
-                // todo: use the proper thickness
-                1.0,
+                thickness,
             );
             to_add.push(new_branch);
             branch.reset();

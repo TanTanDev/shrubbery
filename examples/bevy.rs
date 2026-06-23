@@ -129,10 +129,10 @@ fn setup(
     ));
 
     commands.insert_resource(TreeAssetHandle(
-        // asset_server.load("space_colonizers/oak.tree.space_colonizer.ron"),
+        asset_server.load("space_colonizers/oak.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/conifer_demo.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/2.tree.space_colonizer.ron"),
-        asset_server.load("space_colonizers/4.tree.space_colonizer.ron"),
+        // asset_server.load("space_colonizers/4.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/7.tree.space_colonizer.ron"),
     ));
 
