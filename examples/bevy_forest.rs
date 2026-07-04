@@ -9,8 +9,8 @@ use bevy::{
 use rand::{RngExt, SeedableRng, seq::IndexedRandom};
 use shrubbery::{
     bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
-    bevy_plugin::TreeSpaceColonizationAsset,
-    prelude::SpaceColonizationPlugin,
+    bevy_plugin::ShrubberyAsset,
+    prelude::ShrubberyPlugin,
     voxel::{VoxelDefinitions, VoxelId, voxelize},
 };
 
@@ -53,7 +53,7 @@ impl From<(&str, Srgba)> for VoxelMaterial {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(SpaceColonizationPlugin)
+        .add_plugins(ShrubberyPlugin)
         .add_plugins(NoCameraPlayerPlugin)
         .insert_resource(MovementSettings {
             sensitivity: 0.00015,
@@ -73,7 +73,7 @@ fn main() {
 /// handle to keep the tree asset always loaded in memory
 #[derive(Resource)]
 #[allow(dead_code)]
-struct TreeAssetHandles(Vec<Handle<TreeSpaceColonizationAsset>>);
+struct TreeAssetHandles(Vec<Handle<ShrubberyAsset>>);
 
 #[derive(Resource)]
 struct TreeSeed(pub u64);
@@ -176,7 +176,7 @@ pub struct RotatingLightTag;
 /// root entity holding tree voxels
 #[derive(Component)]
 pub struct Tree {
-    pub tree_handle: Handle<TreeSpaceColonizationAsset>,
+    pub tree_handle: Handle<ShrubberyAsset>,
 }
 
 fn update_seed_on_press(
@@ -195,7 +195,7 @@ fn update_seed_on_press(
 pub struct TreeFolderHandle(Handle<LoadedFolder>);
 
 fn setup_assets(asset_server: Res<AssetServer>, mut commands: Commands) {
-    let tree_folder_handle = asset_server.load_folder("space_colonizers");
+    let tree_folder_handle = asset_server.load_folder("shrubbery");
     commands.insert_resource(TreeFolderHandle(tree_folder_handle));
 }
 
@@ -213,12 +213,12 @@ fn handle_tree_folder_loaded(
 
     let mut trees = vec![];
     for handle in loaded_folder.handles.iter() {
-        match handle.clone().try_typed::<TreeSpaceColonizationAsset>() {
+        match handle.clone().try_typed::<ShrubberyAsset>() {
             Ok(handle) => {
                 trees.push(handle);
             }
             Err(_) => {
-                panic!("asset type not TreeSpaceColonizationAsset");
+                panic!("asset type not ShrubberyAsset");
             }
         }
     }
@@ -260,8 +260,8 @@ fn setup_forest(
 }
 
 fn rebuild_tree_on_update(
-    mut events: MessageReader<AssetEvent<TreeSpaceColonizationAsset>>,
-    tree_assets: Res<Assets<TreeSpaceColonizationAsset>>,
+    mut events: MessageReader<AssetEvent<ShrubberyAsset>>,
+    tree_assets: Res<Assets<ShrubberyAsset>>,
     // tree_handle: Res<TreeAssetHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,

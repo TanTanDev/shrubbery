@@ -1,6 +1,6 @@
 use core::f32;
 
-use crate::{attractor::Attractor, tree_space_colonization::AttractorSpacing};
+use crate::{attractor::Attractor, shrubbery::AttractorSpacing};
 use glam::*;
 use rand::RngExt;
 use rand_chacha::ChaCha8Rng;

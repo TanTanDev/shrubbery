@@ -3,7 +3,7 @@ pub mod attractor;
 pub mod attractor_generator_settings;
 pub mod branch;
 pub mod shape;
-pub mod tree_space_colonization;
+pub mod shrubbery;
 pub mod vec;
 pub mod voxel;
 pub use glam;
@@ -15,10 +15,10 @@ pub mod bevy_fly_cam;
 pub mod bevy_plugin;
 
 pub mod prelude {
-    pub use crate::tree_space_colonization::TreeGeneratorSpaceColonization;
+    pub use crate::shrubbery::ShrubberyGenerator;
 
     #[cfg(feature = "bevy")]
-    pub use crate::bevy_plugin::SpaceColonizationPlugin;
+    pub use crate::bevy_plugin::ShrubberyPlugin;
 }
 
 pub mod math {

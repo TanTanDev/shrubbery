@@ -12,8 +12,8 @@ use bevy::{
 use rand::{RngExt, SeedableRng};
 use shrubbery::{
     bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
-    bevy_plugin::TreeSpaceColonizationAsset,
-    prelude::SpaceColonizationPlugin,
+    bevy_plugin::ShrubberyAsset,
+    prelude::ShrubberyPlugin,
     voxel::{VoxelDefinitions, VoxelId, voxelize},
 };
 
@@ -56,7 +56,7 @@ impl From<(&str, Srgba)> for VoxelMaterial {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(SpaceColonizationPlugin)
+        .add_plugins(ShrubberyPlugin)
         .add_plugins(NoCameraPlayerPlugin)
         .insert_resource(MovementSettings {
             sensitivity: 0.00015, // default: 0.00012
@@ -78,7 +78,7 @@ fn main() {
 /// handle to keep the tree asset always loaded in memory
 #[derive(Resource)]
 #[allow(dead_code)]
-struct TreeAssetHandle(Handle<TreeSpaceColonizationAsset>);
+struct TreeAssetHandle(Handle<ShrubberyAsset>);
 
 /// if present, swap the tree seed
 #[derive(Resource)]
@@ -133,11 +133,7 @@ fn setup(
     ));
 
     commands.insert_resource(TreeAssetHandle(
-        asset_server.load("space_colonizers/2.tree.space_colonizer.ron"),
-        // asset_server.load("space_colonizers/conifer_demo.tree.space_colonizer.ron"),
-        // asset_server.load("space_colonizers/2.tree.space_colonizer.ron"),
-        // asset_server.load("space_colonizers/4.tree.space_colonizer.ron"),
-        // asset_server.load("space_colonizers/7.tree.space_colonizer.ron"),
+        asset_server.load("shrubbery/2.shrubbery.ron"),
     ));
 
     commands.insert_resource(AmbientLight {
@@ -223,8 +219,8 @@ fn update_on_press(
 }
 
 fn spawn_on_asset_change(
-    mut events: MessageReader<AssetEvent<TreeSpaceColonizationAsset>>,
-    tree_assets: Res<Assets<TreeSpaceColonizationAsset>>,
+    mut events: MessageReader<AssetEvent<ShrubberyAsset>>,
+    tree_assets: Res<Assets<ShrubberyAsset>>,
     tree_handle: Res<TreeAssetHandle>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,

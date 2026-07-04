@@ -81,7 +81,7 @@ pub struct GrowRadial {
 /// instructions for how to build a space colonization tree
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum SpaceColonizationStep {
+pub enum ShrubberyStep {
     /// Grow branches in a fixed direction (trunk building)
     GrowDirection(GrowDirection),
     /// Grow branches in a special radial way
@@ -104,11 +104,11 @@ pub enum SpaceColonizationStep {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct SpaceColonizationSettings {
+pub struct ShrubberySettings {
     /// how the initial branches will spawn
     pub trunk_settings: TrunkSettings,
     /// steps, how to grow/shape/modify the tree
-    pub build_steps: Vec<SpaceColonizationStep>,
+    pub build_steps: Vec<ShrubberyStep>,
     /// what voxels to use for bark
     pub bark_decorator: BarkDecorator,
     /// branch voxel thickness (global, can vary by generation)
@@ -331,9 +331,9 @@ pub struct SpawnAttractorsOnBranches {
     pub filter: BranchFilter,
 }
 
-impl SpaceColonizationSettings {
-    pub fn make_generator(&self, seed: u64) -> TreeGeneratorSpaceColonization {
-        TreeGeneratorSpaceColonization::new(&self, seed)
+impl ShrubberySettings {
+    pub fn make_generator(&self, seed: u64) -> ShrubberyGenerator {
+        ShrubberyGenerator::new(&self, seed)
     }
 
     pub fn resolve_voxel_definitions(&mut self, voxel_definitions: &VoxelDefinitions) {
@@ -344,31 +344,31 @@ impl SpaceColonizationSettings {
         }
         for step in self.build_steps.iter_mut() {
             match step {
-                SpaceColonizationStep::GrowDirection(grow_direction) => {
+                ShrubberyStep::GrowDirection(grow_direction) => {
                     grow_direction.decoration.resolve(voxel_definitions);
                 }
-                SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
+                ShrubberyStep::GrowToAttractors(grow_to_attractors) => {
                     grow_to_attractors.decoration.resolve(voxel_definitions);
                 }
-                SpaceColonizationStep::SpawnLeaves(spawn_leaves_step) => {
+                ShrubberyStep::SpawnLeaves(spawn_leaves_step) => {
                     spawn_leaves_step.decoration.resolve(voxel_definitions);
                 }
-                SpaceColonizationStep::GrowRadial(grow_radial) => {
+                ShrubberyStep::GrowRadial(grow_radial) => {
                     grow_radial.decoration.resolve(voxel_definitions);
                 }
                 // nothing to resolve
-                SpaceColonizationStep::SpawnAttractor(_)
-                | SpaceColonizationStep::SpawnAttractorOnBranches(_)
-                | SpaceColonizationStep::ClearAttractors => (),
+                ShrubberyStep::SpawnAttractor(_)
+                | ShrubberyStep::SpawnAttractorOnBranches(_)
+                | ShrubberyStep::ClearAttractors => (),
             }
         }
     }
 }
 
-impl Default for SpaceColonizationSettings {
+impl Default for ShrubberySettings {
     fn default() -> Self {
         Self {
-            build_steps: vec![SpaceColonizationStep::GrowToAttractors(GrowToAttractors {
+            build_steps: vec![ShrubberyStep::GrowToAttractors(GrowToAttractors {
                 times: ValueOrRangeU32::Value(5),
                 branch_len: ValueOrRangeF32::Value(5.0),
                 kill_distance: 0.3,
@@ -425,7 +425,8 @@ pub enum IterationCalculation {
     Parent,
 }
 
-pub struct TreeGeneratorSpaceColonization {
+/// the working struct to process our proc generation
+pub struct ShrubberyGenerator {
     pub branches: Vec<Branch>,
     pub attractors: Vec<Attractor>,
     pub min_bounds: Vec3,
@@ -440,9 +441,9 @@ pub struct TreeGeneratorSpaceColonization {
     pub last_known_id: u32,
 }
 
-impl TreeGeneratorSpaceColonization {
+impl ShrubberyGenerator {
     // pub fn new(root_pos: Vec3, initial_dir: Vec3, seed: u64) -> Self {
-    pub fn new(settings: &SpaceColonizationSettings, seed: u64) -> Self {
+    pub fn new(settings: &ShrubberySettings, seed: u64) -> Self {
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
         let mut branches = Vec::new();
 
@@ -490,12 +491,12 @@ impl TreeGeneratorSpaceColonization {
             .collect()
     }
 
-    pub fn execute_step(&mut self, step: &SpaceColonizationStep) {
+    pub fn execute_step(&mut self, step: &ShrubberyStep) {
         match step {
-            SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
+            ShrubberyStep::GrowToAttractors(grow_to_attractors) => {
                 self.grow_to_attractors(grow_to_attractors);
             }
-            SpaceColonizationStep::SpawnAttractor(spawn_attractor) => {
+            ShrubberyStep::SpawnAttractor(spawn_attractor) => {
                 spawn_attractor.shape.generate(
                     spawn_attractor.pos,
                     &mut self.attractors,
@@ -503,25 +504,25 @@ impl TreeGeneratorSpaceColonization {
                     &mut self.rng,
                 );
             }
-            SpaceColonizationStep::GrowDirection(grow_trunk) => {
+            ShrubberyStep::GrowDirection(grow_trunk) => {
                 self.grow_direction(grow_trunk);
             }
-            SpaceColonizationStep::SpawnAttractorOnBranches(s) => {
+            ShrubberyStep::SpawnAttractorOnBranches(s) => {
                 self.spawn_attractors_on_branches(s);
             }
-            SpaceColonizationStep::SpawnLeaves(s) => {
+            ShrubberyStep::SpawnLeaves(s) => {
                 self.spawn_leaves(s);
             }
-            SpaceColonizationStep::ClearAttractors => {
+            ShrubberyStep::ClearAttractors => {
                 self.attractors.clear();
             }
-            SpaceColonizationStep::GrowRadial(grow_radial) => {
+            ShrubberyStep::GrowRadial(grow_radial) => {
                 self.grow_radial(grow_radial);
             }
         }
     }
 
-    pub fn execute_all_step(&mut self, settings: &SpaceColonizationSettings) {
+    pub fn execute_all_step(&mut self, settings: &ShrubberySettings) {
         for step in settings.build_steps.iter() {
             self.execute_step(step);
         }

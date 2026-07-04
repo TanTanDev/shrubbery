@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     math_utils::percent_in_range,
-    prelude::TreeGeneratorSpaceColonization,
-    tree_space_colonization::{BarkDecorator, SpaceColonizationSettings, ValueOrRangeF32},
+    prelude::ShrubberyGenerator,
+    shrubbery::{BarkDecorator, ShrubberySettings, ValueOrRangeF32},
 };
 const EPSILON: f32 = 0.0001;
 
@@ -360,7 +360,7 @@ pub fn drop_id(voxels: &mut Vec<(IVec3, VoxelId)>, voxel_id: VoxelId, procentage
 }
 
 /// Largest leaf radius across all leaf groups, for bounding-box padding.
-fn leaf_padding(generator: &TreeGeneratorSpaceColonization) -> i32 {
+fn leaf_padding(generator: &ShrubberyGenerator) -> i32 {
     generator
         .leaf_groups
         .iter()
@@ -380,8 +380,8 @@ fn leaf_padding(generator: &TreeGeneratorSpaceColonization) -> i32 {
 /// canopy).  ConiferWhorl groups are emitted generatively; Sphere groups are
 /// tested per-cell in the bounding-box scan.
 pub fn voxelize(
-    generator: &mut TreeGeneratorSpaceColonization,
-    settings: &SpaceColonizationSettings,
+    generator: &mut ShrubberyGenerator,
+    settings: &ShrubberySettings,
 ) -> Vec<(IVec3, VoxelId)> {
     let (mut min_bounds, mut max_bounds) = generator.get_bounds();
     let padding = leaf_padding(generator);
@@ -423,8 +423,8 @@ pub fn voxelize(
 
 fn process_voxel(
     pos: IVec3,
-    shrubbery: &mut TreeGeneratorSpaceColonization,
-    settings: &SpaceColonizationSettings,
+    shrubbery: &mut ShrubberyGenerator,
+    settings: &ShrubberySettings,
     voxels: &mut Vec<(IVec3, VoxelId)>,
 ) {
     let sample_pos = vec3(pos.x as f32 + 0.5, pos.y as f32 + 0.5, pos.z as f32 + 0.5);
@@ -493,7 +493,7 @@ fn process_voxel(
 
 /// Emit conifer-whorl voxels directly from each branch assigned to this leaf group.
 fn voxelize_conifer_whorls(
-    generator: &mut TreeGeneratorSpaceColonization,
+    generator: &mut ShrubberyGenerator,
     group_idx: usize,
     whorl: &ConiferWhorlShape,
     decoration: &LeafDecoration,
@@ -736,13 +736,13 @@ fn voxelize_conifer_whorls(
 fn generate_sphere_leaf(
     pos: Vec3,
     grid_pos: IVec3,
-    mut shrubbery: &mut TreeGeneratorSpaceColonization,
+    mut shrubbery: &mut ShrubberyGenerator,
     group_idx: usize,
     // r: f32,
     // decoration: &LeafDecoration,
     voxels: &mut Vec<(IVec3, VoxelId)>,
 ) -> bool {
-    let TreeGeneratorSpaceColonization {
+    let ShrubberyGenerator {
         branches,
         rng,
         leaf_groups,

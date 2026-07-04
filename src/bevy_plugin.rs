@@ -5,14 +5,14 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{tree_space_colonization::SpaceColonizationSettings, voxel::VoxelDefinitions};
+use crate::{shrubbery::ShrubberySettings, voxel::VoxelDefinitions};
 
-pub struct SpaceColonizationPlugin;
+pub struct ShrubberyPlugin;
 
-impl Plugin for SpaceColonizationPlugin {
+impl Plugin for ShrubberyPlugin {
     fn build(&self, app: &mut bevy::app::App) {
-        app.init_asset::<TreeSpaceColonizationAsset>();
-        app.init_asset_loader::<TreeSpaceColonizationAssetLoader>();
+        app.init_asset::<ShrubberyAsset>();
+        app.init_asset_loader::<ShrubberyAssetLoader>();
         app.insert_resource(TreeAssetsAwaitingSync(vec![]));
         app.add_systems(
             PostUpdate,
@@ -37,13 +37,13 @@ pub enum RonLoaderError {
 // todo: rename to shrubbery asset
 #[derive(Clone, Default, Debug, Asset, TypePath, Serialize, Deserialize)]
 #[serde(transparent)] // collapse the inner tuple
-pub struct TreeSpaceColonizationAsset(pub SpaceColonizationSettings);
+pub struct ShrubberyAsset(pub ShrubberySettings);
 
 #[derive(Default, TypePath)]
-pub struct TreeSpaceColonizationAssetLoader;
+pub struct ShrubberyAssetLoader;
 
-impl AssetLoader for TreeSpaceColonizationAssetLoader {
-    type Asset = TreeSpaceColonizationAsset;
+impl AssetLoader for ShrubberyAssetLoader {
+    type Asset = ShrubberyAsset;
     type Settings = ();
     type Error = RonLoaderError;
 
@@ -60,17 +60,17 @@ impl AssetLoader for TreeSpaceColonizationAssetLoader {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["tree.space_colonizer.ron"]
+        &["shrubbery.ron"]
     }
 }
 
 /// these TreeAssets are awaiting to sync voxel names into VoxelIds, when VoxelDictionary are present
 #[derive(Resource)]
-pub struct TreeAssetsAwaitingSync(Vec<AssetId<TreeSpaceColonizationAsset>>);
+pub struct TreeAssetsAwaitingSync(Vec<AssetId<ShrubberyAsset>>);
 
 fn begin_sync_voxel_ids_with_tree_assets(
-    mut tree_assets: ResMut<Assets<TreeSpaceColonizationAsset>>,
-    mut events: MessageReader<AssetEvent<TreeSpaceColonizationAsset>>,
+    mut tree_assets: ResMut<Assets<ShrubberyAsset>>,
+    mut events: MessageReader<AssetEvent<ShrubberyAsset>>,
     voxel_definitions: Option<Res<VoxelDefinitions>>,
     mut trees_awaiting_sync: ResMut<TreeAssetsAwaitingSync>,
 ) {
@@ -96,7 +96,7 @@ fn begin_sync_voxel_ids_with_tree_assets(
 
 fn sync_voxel_ids_with_tree_assets(
     mut awaiting: ResMut<TreeAssetsAwaitingSync>,
-    mut tree_assets: ResMut<Assets<TreeSpaceColonizationAsset>>,
+    mut tree_assets: ResMut<Assets<ShrubberyAsset>>,
     voxel_definitions: Option<Res<VoxelDefinitions>>,
 ) {
     awaiting.0.retain(|id| {

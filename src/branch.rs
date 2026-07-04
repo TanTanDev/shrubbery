@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::tree_space_colonization::TrunkGrowthDirection;
+use crate::shrubbery::TrunkGrowthDirection;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
