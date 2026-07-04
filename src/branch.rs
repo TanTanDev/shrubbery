@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::{leaf_classifier::LeafClassifier, tree_space_colonization::TrunkGrowthDirection};
+use crate::tree_space_colonization::TrunkGrowthDirection;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -67,14 +67,6 @@ impl Branch {
             iteration,
             iteration_total,
             id,
-        }
-    }
-
-    /// no child branches: is leaf
-    pub fn is_leaf(&self, classifier: &LeafClassifier) -> bool {
-        match classifier {
-            LeafClassifier::LastBranch => self.child_count == 0,
-            LeafClassifier::NonRootBranch => self.iteration != 0,
         }
     }
 

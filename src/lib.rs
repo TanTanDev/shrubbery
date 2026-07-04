@@ -2,7 +2,6 @@ pub mod algorithm_settings;
 pub mod attractor;
 pub mod attractor_generator_settings;
 pub mod branch;
-pub mod leaf_classifier;
 pub mod shape;
 pub mod tree_space_colonization;
 pub mod vec;
