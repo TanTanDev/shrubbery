@@ -65,6 +65,8 @@ fn main() {
         .add_systems(Startup, spawn_ui)
         .add_systems(Update, next_tree_on_press)
         .add_systems(Update, handle_tree_folder_loaded)
+        .add_systems(Update, sync_ui_text)
+        .add_systems(Update, setup_tree_on_assets_loaded)
         .add_systems(Update, rebuild_tree_on_update)
         .add_systems(Update, update_seed_on_press)
         .add_systems(Update, move_light)
@@ -74,7 +76,6 @@ fn main() {
 
 /// handle to keep the tree asset always loaded in memory
 #[derive(Resource)]
-#[allow(dead_code)]
 struct TreeAssetHandles(Vec<Handle<TreeSpaceColonizationAsset>>);
 
 #[derive(Resource)]
@@ -89,7 +90,6 @@ fn setup(
         ("bark_bright", BROWN),
         ("bark", BROWN.with_red(0.4)),
         ("bark_dark", BROWN.with_red(0.3)),
-        // ("leaf_bright", GREEN),
         ("leaf_bright", Srgba::BLACK.with_green(0.7)),
         ("leaf_mid", Srgba::BLACK.with_green(0.5)),
         ("leaf_dark", Srgba::BLACK.with_green(0.3)),
@@ -216,12 +216,47 @@ fn spawn_ui(mut commands: Commands) {
     ));
 }
 
+// if a tree spawns pre knowing what tree assets exist, set it once it loads
+fn setup_tree_on_assets_loaded(
+    tree_handles: Option<Res<TreeAssetHandles>>,
+    mut is_loaded: Local<bool>,
+    mut query: Query<&mut Tree>,
+) {
+    if *is_loaded {
+        return;
+    }
+    let Some(tree_handles) = tree_handles else {
+        return;
+    };
+    for mut tree in query.iter_mut() {
+        tree.tree_handle = tree_handles.0.first().expect("any tree asset").clone();
+        info!("overwrite existing trree");
+    }
+    info!("forced tree handles");
+    *is_loaded = true;
+}
+
+fn sync_ui_text(
+    query: Query<&Tree, Changed<Tree>>,
+    mut texts: Query<&mut Text, With<UiTextTag>>,
+    asset_server: Res<AssetServer>,
+) {
+    for tree in query {
+        let Some(asset_path) = asset_server.get_path(&tree.tree_handle) else {
+            // the first tree, might have a null tree handle
+            continue;
+        };
+        let asset_name = asset_path.path().file_name().unwrap().to_string_lossy();
+        for mut text in texts.iter_mut() {
+            text.0 = asset_name.to_string();
+        }
+    }
+}
+
 fn next_tree_on_press(
     keyboard: Res<ButtonInput<KeyCode>>,
     tree_handles: Option<Res<TreeAssetHandles>>,
     query: Query<&mut Tree>,
-    mut texts: Query<&mut Text, With<UiTextTag>>,
-    asset_server: Res<AssetServer>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyN) {
         return;
@@ -241,11 +276,6 @@ fn next_tree_on_press(
             next_index = 0;
         }
         tree.tree_handle = tree_handles.0.get(next_index).expect("wtf").clone();
-        let asset_path = asset_server.get_path(&tree.tree_handle).unwrap();
-        let asset_name = asset_path.path().file_name().unwrap().to_string_lossy();
-        for mut text in texts.iter_mut() {
-            text.0 = asset_name.to_string();
-        }
     }
 }
 
@@ -284,20 +314,20 @@ fn handle_tree_folder_loaded(
     commands.remove_resource::<TreeFolderHandle>();
 }
 
-fn spawn_tree(mut commands: Commands) {
+fn spawn_tree(mut commands: Commands, tree_handles: Option<Res<TreeAssetHandles>>) {
+    let tree_handle = tree_handles.map_or(Handle::default(), |handles| {
+        handles.0.first().expect("1 single asset").clone()
+    });
     commands.spawn((
         Transform::default(),
         Visibility::Visible,
-        Tree {
-            tree_handle: Handle::default(),
-        },
+        Tree { tree_handle },
     ));
 }
 
 fn rebuild_tree_on_update(
     mut events: MessageReader<AssetEvent<TreeSpaceColonizationAsset>>,
     tree_assets: Res<Assets<TreeSpaceColonizationAsset>>,
-    // tree_handle: Res<TreeAssetHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
