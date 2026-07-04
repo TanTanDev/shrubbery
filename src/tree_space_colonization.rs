@@ -224,12 +224,6 @@ pub enum InitialDir {
     },
 }
 
-// impl InitialDir {
-//     pub fn get(&self, rng: &mut ChaCha8Rng) -> Vec3 {
-//         Vec3::Y
-//     }
-// }
-
 impl InitialDir {
     pub fn get(&self, rng: &mut ChaCha8Rng) -> Vec3 {
         match self {
@@ -302,28 +296,6 @@ pub struct SpawnLeavesStep {
     #[serde(default)]
     pub overwrite: bool,
 }
-
-/// Which branches to use as anchor points when spawning per-branch attractors.
-// #[derive(Clone, Debug)]
-// #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-// pub enum BranchSelector {
-//     /// Only branches with no children (current tips).
-//     Tips,
-//     /// Branches whose generation is exactly this value.
-//     ExactGeneration(u32),
-//     /// Branches whose generation equals or exceeds this value.
-//     MinGeneration(u32),
-//     /// Branches whose generation is at most this value.
-//     MaxGeneration(u32),
-//     /// Branches whose Y position is at or above this world-space value.
-//     MinHeight(f32),
-//     /// Branches whose Y position is at or below this world-space value.
-//     MaxHeight(f32),
-//     /// Tips that also satisfy a minimum generation.
-//     TipsWithMinGeneration(u32),
-//     /// Tips that also satisfy an exact generation.
-//     TipsWithExactGeneration(u32),
-// }
 
 /// Offset direction when placing the attractor shape relative to a branch tip.
 #[derive(Clone, Debug)]
@@ -468,22 +440,6 @@ pub struct TreeGeneratorSpaceColonization {
     pub last_known_id: u32,
 }
 
-/// Returns true if `branch` matches the given selector.
-/// Centralised here so all steps (SpawnLeaves, SpawnAttractorOnBranches, etc.)
-/// use identical logic.
-// fn branch_selector_matches(selector: &BranchSelector, b: &Branch) -> bool {
-//     match selector {
-//         BranchSelector::Tips => b.child_count == 0,
-//         BranchSelector::ExactGeneration(generation) => b.iteration == *generation,
-//         BranchSelector::MinGeneration(min) => b.iteration >= *min,
-//         BranchSelector::MaxGeneration(max) => b.iteration <= *max,
-//         BranchSelector::MinHeight(min_y) => b.pos.y >= *min_y,
-//         BranchSelector::MaxHeight(max_y) => b.pos.y <= *max_y,
-//         BranchSelector::TipsWithMinGeneration(min) => b.child_count == 0 && b.iteration >= *min,
-//         BranchSelector::TipsWithExactGeneration(g) => b.child_count == 0 && b.iteration == *g,
-//     }
-// }
-
 impl TreeGeneratorSpaceColonization {
     // pub fn new(root_pos: Vec3, initial_dir: Vec3, seed: u64) -> Self {
     pub fn new(settings: &SpaceColonizationSettings, seed: u64) -> Self {
@@ -521,14 +477,23 @@ impl TreeGeneratorSpaceColonization {
         }
     }
 
+    /// helper
+    fn get_branch_indices_filtered(&self, filter: &BranchFilter) -> Vec<usize> {
+        self.branches
+            .iter()
+            .enumerate()
+            .filter_map(|(i, branch)| {
+                filter
+                    .should_include_branch(branch, self.last_known_id)
+                    .then_some(i)
+            })
+            .collect()
+    }
+
     pub fn execute_step(&mut self, step: &SpaceColonizationStep) {
         match step {
             SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
-                // let times = grow_to_attractors.times.get(&mut self.rng);
-                // for i in 0..times {
-                // self.grow_to_attractors(grow_to_attractors, i, times);
                 self.grow_to_attractors(grow_to_attractors);
-                // }
             }
             SpaceColonizationStep::SpawnAttractor(spawn_attractor) => {
                 spawn_attractor.shape.generate(
@@ -667,22 +632,13 @@ impl TreeGeneratorSpaceColonization {
         max_bounds.z = max_bounds.z.max(branch_pos.z + radius);
     }
 
+    /// spawn new branches based upon speficied grow direction
     pub fn grow_direction(&mut self, grow_trunk: &GrowDirection) {
         let decoration_index = self.branch_decorations.len();
         self.branch_decorations.push(grow_trunk.decoration.clone());
         let grow_times = grow_trunk.times.get(&mut self.rng);
 
-        let indices: Vec<usize> = self
-            .branches
-            .iter()
-            .enumerate()
-            .filter_map(|(i, branch)| {
-                grow_trunk
-                    .filter
-                    .should_include_branch(branch, self.last_known_id)
-                    .then_some(i)
-            })
-            .collect();
+        let indices = self.get_branch_indices_filtered(&grow_trunk.filter);
 
         let id = grow_trunk.assign_id.get(self.last_known_id);
         self.last_known_id = id;
@@ -714,49 +670,14 @@ impl TreeGeneratorSpaceColonization {
                 running_index = self.branches.len() - 1;
             }
         }
-        // for i in 0..grow_times {
-        //     let thickness = grow_trunk
-        //         .branch_thickness
-        //         .get(i, grow_times, &mut self.rng);
-
-        //     for branch_index in indices.iter() {
-        //         let mut new_branch = self.branches[*branch_index].next(
-        //             *branch_index,
-        //             grow_trunk.branch_len.get(&mut self.rng),
-        //             false,
-        //             &grow_trunk.trunk_growth_direction,
-        //             thickness,
-        //             i,
-        //             grow_times,
-        //         );
-        //         new_branch.decoration_group = Some(decoration_index);
-        //         self.oldest_generation = u32::max(self.oldest_generation, new_branch.generation);
-        //         self.branches[*branch_index].child_count += 1;
-        //         Self::update_bound(
-        //             &mut self.min_bounds,
-        //             &mut self.max_bounds,
-        //             new_branch.pos,
-        //             thickness,
-        //         );
-        //         self.branches.push(new_branch);
-        //     }
-        // }
     }
+
+    /// spawn branches in a radial formation
     pub fn grow_radial(&mut self, grow_radial: &GrowRadial) {
         let decoration_index = self.branch_decorations.len();
         self.branch_decorations.push(grow_radial.decoration.clone());
 
-        let indices: Vec<usize> = self
-            .branches
-            .iter()
-            .enumerate()
-            .filter_map(|(i, branch)| {
-                grow_radial
-                    .filter
-                    .should_include_branch(branch, self.last_known_id)
-                    .then_some(i)
-            })
-            .collect();
+        let indices = self.get_branch_indices_filtered(&grow_radial.filter);
 
         let id = grow_radial.assign_id.get(self.last_known_id);
         self.last_known_id = id;
@@ -784,9 +705,6 @@ impl TreeGeneratorSpaceColonization {
 
                 dir = Quat::from_rotation_y(yaw) * dir;
                 dir = Quat::from_axis_angle(dir.cross(Vec3::Y).normalize(), pitch) * dir;
-                // let dir = Quat::from_rotation_y(yaw)
-                //     * Vec3::Y
-                //     * ;
 
                 let mut new_branch = self.branches[branch_index].next(
                     branch_index,
@@ -814,12 +732,7 @@ impl TreeGeneratorSpaceColonization {
     }
 
     /// using space colonization algorithm, spawn new branches
-    pub fn grow_to_attractors(
-        &mut self,
-        grow_to_attractors: &GrowToAttractors,
-        // call_i: u32,
-        // call_times: u32,
-    ) {
+    pub fn grow_to_attractors(&mut self, grow_to_attractors: &GrowToAttractors) {
         let times = grow_to_attractors.times.get(&mut self.rng);
 
         let group_index = self.branch_decorations.len();
@@ -848,19 +761,6 @@ impl TreeGeneratorSpaceColonization {
             for attractor in self.attractors.iter_mut() {
                 let mut closest_branch: Option<usize> = None;
                 let mut closest_dist = 999999.;
-                // find shortest signed distance of all selected branches
-                // for (branch_index, branch) in self
-                //     .branches
-                //     .iter_mut()
-                //     // never grow branches from the root
-                //     .enumerate()
-                //     .filter(|(_i, branch)| branch.parent_index.is_some())
-                //     .filter(|(_i, branch)| {
-                //         grow_to_attractors
-                //             .filter
-                //             .should_include_branch(branch, self.oldest_generation)
-                //     })
-                // {
                 for (branch_index, branch) in self
                     .branches
                     .iter_mut()
@@ -939,12 +839,12 @@ impl TreeGeneratorSpaceColonization {
             }
             let branch_len = usize::checked_sub(self.branches.len(), 1).expect("can this happend");
             self.branches.extend(to_add);
-            // the active branches have (maybe) grown, no need to recheck them
+            // the active branches have (possibly) grown, no need to recheck them
             active_branches.clear();
             // "flag" newly created branches to be able to grow next iteration.
             let added_indices: Vec<usize> = (branch_len..self.branches.len()).collect();
             active_branches.extend(added_indices);
-        } // times loop
+        }
     }
 
     /// spawn particles inside provided shape, based on settings
