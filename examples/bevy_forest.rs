@@ -1,12 +1,8 @@
-use std::{
-    collections::HashMap,
-    f32::consts::PI,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, f32::consts::PI};
 
 use bevy::{
     asset::LoadedFolder,
-    color::palettes::css::{BROWN, GREEN, WHITE, YELLOW},
+    color::palettes::css::{BROWN, WHITE, YELLOW},
     light::CascadeShadowConfigBuilder,
     prelude::*,
 };
@@ -60,8 +56,8 @@ fn main() {
         .add_plugins(SpaceColonizationPlugin)
         .add_plugins(NoCameraPlayerPlugin)
         .insert_resource(MovementSettings {
-            sensitivity: 0.00015, // default: 0.00012
-            speed: 32.0,          // default: 12.0
+            sensitivity: 0.00015,
+            speed: 64.0,
         })
         .add_systems(Startup, setup)
         .add_systems(Startup, setup_assets)
@@ -84,7 +80,6 @@ struct TreeSeed(pub u64);
 
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -116,19 +111,19 @@ fn setup(
     commands.insert_resource(voxel_materials);
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(-11.5, 54.5, 29.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(0.0, 90.5, 90.0).looking_at(Vec3::ZERO, Vec3::Y),
         FlyCam,
     ));
 
     commands.spawn((
         Mesh3d(meshes.add(Circle::new(100.0))),
-        MeshMaterial3d(materials.add(Color::from(GREEN))),
+        MeshMaterial3d(materials.add(Color::WHITE)),
         Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
     ));
 
     commands.insert_resource(AmbientLight {
         color: WHITE.into(),
-        brightness: 400.0,
+        brightness: 600.0,
         affects_lightmapped_meshes: true,
     });
 
@@ -245,7 +240,7 @@ fn setup_forest(
     let tree_count = 20;
     let mut rng = rand::rng();
     let area = 50.0;
-    for i in 0..tree_count {
+    for _i in 0..tree_count {
         let x = rng.random_range(-area..=area);
         let z = rng.random_range(-area..=area);
 
