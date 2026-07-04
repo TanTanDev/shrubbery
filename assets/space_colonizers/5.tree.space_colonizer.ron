@@ -5,76 +5,206 @@
         count: 1,
         root_pos: (0.0, 0.0, 0.0),
         branch_len: Value(5.0),
-        initial_dir: Value((0.0, 1.0, 0.0)),
+        initial_dir: Random(
+            y_rotation_range: Range(0, 360),
+            z_rotation_max: Range(1, 4),
+        ),
     ),
     build_steps: [
         // Strong lean for visible palm curve
         GrowDirection((
             times: Value(9),
-            trunk_growth_direction: GravityLean(strength: 0.5),
+            trunk_growth_direction: GravityLean(strength: 0.2),
             branch_len: Value(4.5),
+            branch_thickness: ValueOrRange(Value(2.0)),
+            decoration: Single(VoxelMapping(name: "bark")),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
         )),
-        // Crown arm attractors: offset upward first to gain height at the crown
-        SpawnAttractorOnBranches((
-            selector: Tips,
-            offset_distance: 4.0,
-            offset_dir: WorldUp,
-            shape: Cube((size_x: 14.0, size_y: 2.0, size_z: 14.0)),
-            attractor_spacing: AttractorSpacing(attractor_spacing: 4.0, jitter_ratio: 0.9),
-        )),
-        GrowToAttractors((
-            times: Value(2),
-            branch_len: Value(4.5),
-            kill_distance: 3.5,
-            leaf_attraction_dist: 7.0,
-        )),
-        ClearAttractors,
-        // Coconuts on the current crown arm tips
-        SpawnLeaves((
-            selector: Tips,
-            shape: Sphere(radius: Value(1.8)),
-            decoration: Single(VoxelMapping(name: "coconut")),
-        )),
-        // Frond attractors fanning out horizontally from crown tips
-        SpawnAttractorOnBranches((
-            selector: Tips,
-            offset_distance: 4.0,
-            offset_dir: BranchForwardFlat,
-            shape: Cube((size_x: 16.0, size_y: 2.0, size_z: 16.0)),
-            attractor_spacing: AttractorSpacing(attractor_spacing: 3.5, jitter_ratio: 1.0),
-        )),
-        GrowToAttractors((
+        GrowDirection((
             times: Value(3),
-            branch_len: Value(3.0),
-            kill_distance: 2.5,
-            leaf_attraction_dist: 5.5,
+            trunk_growth_direction: Normal,
+            branch_len: Value(4.5),
+            branch_thickness: ValueOrRange(Value(4.0)),
+            decoration: Single(VoxelMapping(name: "bark_dark")),
+            filter: BranchFilter(
+                iteration_filter: Last,
+            ),
         )),
-        ClearAttractors,
-        // Palm fronds on final tips — random direction arms for the fan effect
+        // coconut branches
+        GrowRadial((
+            count: Range(0,5),
+            spacing_jitter: 0.5,
+            pitch_degrees: Value(-50.0),
+            trunk_growth_direction: Normal,
+            branch_len: Range(5.0, 14.0),
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark")),
+            filter: BranchFilter(
+                generation_filter: Last,
+                iteration_filter: Last,
+            ),
+        )),
+        // coconut balls
         SpawnLeaves((
-            selector: Tips,
-            shape: ConiferWhorl((
-                max_branch_length: 9.0,
-                max_branch_width: 1.5,
-                branch_sharpness: 0.8,
-                branch_thickness: 1,
-                branch_droop: 0.35,
-                tip_lift: 0.0,
-                rotation_step: 2.39996,
-                length_jitter_ratio: 0.15,
-                taper: None,
-                arm_facing: Random(max_pitch_degrees: 30.0),
-            )),
+            shape: Sphere(radius: Value(3.0)),
+            decoration: Single(VoxelMapping(name: "bark_bright")),
+            filter: BranchFilter(
+                generation_filter: Target(3),
+                iteration_filter: All,
+            ),
+        )),
+        GrowRadial((
+            count: Range(2,4),
+            spacing_jitter: 1.0,
+            pitch_degrees: Value(10.0),
+            trunk_growth_direction: Normal,
+            branch_len: Value(10.0),
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "leaf_dark")),
+            filter: BranchFilter(
+                generation_filter: Target(2),
+                iteration_filter: Last,
+            ),
+        )),
+        GrowRadial((
+            count: Range(2, 4),
+            spacing_jitter: 1.0,
+            pitch_degrees: Value(40.0),
+            trunk_growth_direction: Normal,
+            branch_len: Value(10.0),
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "leaf_dark")),
+            filter: BranchFilter(
+                generation_filter: Target(2),
+                iteration_filter: Last,
+            ),
+        )),
+        GrowDirection((
+            times: Value(3),
+            trunk_growth_direction: GravityLean(strength: 0.6),
+            branch_len: Value(7.5),
+            branch_thickness: ValueOrRange(Value(2.0)),
+            // decoration: Single(VoxelMapping(name: "leaf_bright")),
             decoration: Gradient((
                 axis: Y,
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    LeafGradientEntry(percent: 0.65, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
             )),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
         )),
+        // SpawnLeaves((
+        //     shape: ConiferWhorl((
+        //         max_branch_length: 13.0,
+        //         max_branch_width: 2.5,
+        //         branch_sharpness: 0.6,
+        //         branch_thickness: 1,
+        //         branch_droop: 0.6,
+        //         tip_lift: 0.0,
+        //         rotation_step: 2.39996,
+        //         length_jitter_ratio: 0.15,
+        //         // taper: Height(min_y: 2.0, max_y: 46.0),
+        //         taper: None,
+        //         arm_facing: Horizontal,
+        //     )),
+        //     filter: BranchFilter(
+        //         ignore_shapes: true,
+        //         generation_filter: Last,
+        //         iteration_filter: All,
+        //     ),
+        //     decoration: Gradient((
+        //         modulation: Some(Random(percent_offset: 0.08)),
+        //         axis: Y,
+        //         steps: [
+        //             LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+        //             LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+        //             LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+        //         ],
+        //     )),
+        // )),
+        // Crown arm attractors: offset upward first to gain height at the crown
+        // SpawnAttractorOnBranches((
+        //     offset_distance: -10.5,
+        //     offset_dir: WorldUp,
+        //     shape: Cube((size_x: 20.0, size_y: 20.0, size_z: 20.0)),
+        //     attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 1.0),
+        //     filter: BranchFilter(
+        //         generation_filter: All,
+        //         iteration_filter: Last,
+        //         // iteration_filter: Greater(6),
+        //     ),
+        // )),
+        // GrowToAttractors((
+        //     times: Value(1),
+        //     branch_len: Value(8.0),
+        //     kill_distance: 5.0,
+        //     leaf_attraction_dist: 9.0,
+        //     branch_thickness: ValueOrRange(Value(1.0)),
+        //     decoration: Single(VoxelMapping(name: "bark")),
+        //     filter: BranchFilter(
+        //         // generation_filter: All,
+        //         // iteration_filter: Last,
+        //         iteration_filter: Greater(5),
+        //     ),
+        // )),
+        // ClearAttractors,
+        // Coconuts on the current crown arm tips
+        // SpawnLeaves((
+        //     selector: Tips,
+        //     shape: Sphere(radius: Value(1.8)),
+        //     decoration: Single(VoxelMapping(name: "coconut")),
+        //     filter: BranchFilter(
+        //         generation_filter: Target(1),
+        //         iteration_filter: All,
+        //     ),
+        // )),
+        // Frond attractors fanning out horizontally from crown tips
+        // SpawnAttractorOnBranches((
+        //     offset_distance: 4.0,
+        //     offset_dir: BranchForwardFlat,
+        //     shape: Cube((size_x: 16.0, size_y: 2.0, size_z: 16.0)),
+        //     attractor_spacing: AttractorSpacing(attractor_spacing: 3.5, jitter_ratio: 1.0),
+        // )),
+        // GrowToAttractors((
+        //     times: Value(3),
+        //     branch_len: Value(3.0),
+        //     kill_distance: 2.5,
+        //     leaf_attraction_dist: 5.5,
+        //     branch_thickness: ValueOrRange(Value(1.0)),
+        //     decoration: Single(VoxelMapping(name: "bark")),
+        // )),
+        // ClearAttractors,
+        // // Palm fronds on final tips — random direction arms for the fan effect
+        // SpawnLeaves((
+        //     shape: ConiferWhorl((
+        //         max_branch_length: 9.0,
+        //         max_branch_width: 1.5,
+        //         branch_sharpness: 0.8,
+        //         branch_thickness: 1,
+        //         branch_droop: 0.35,
+        //         tip_lift: 0.0,
+        //         rotation_step: 2.39996,
+        //         length_jitter_ratio: 0.15,
+        //         taper: None,
+        //         arm_facing: Random(max_pitch_degrees: 30.0),
+        //     )),
+        //     decoration: Gradient((
+        //         axis: Y,
+        //         modulation: Some(Random(percent_offset: 0.08)),
+        //         steps: [
+        //             LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+        //             LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+        //             LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+        //         ],
+        //     )),
+        // )),
     ],
     bark_decorator: Single(VoxelMapping(name: "bark")),
     // Thin trunk tapering to nothing at crown

@@ -13,13 +13,16 @@
     build_steps: [
         GrowDirection((
             times: Value(5),
-            // trunk_growth_direction: Normal,
             trunk_growth_direction: GravityLean(strength: 0.5),
             branch_len: Value(6.5),
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark")),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
         )),
         SpawnAttractor((
             pos: (0.0, 20.0, 0.0),
-            // Narrow cone: wide at base, pinched at top
             shape: Cube((size_x: 8.0, size_y: 20.0, size_z: 8.0)),
             attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 0.6),
         )),
@@ -28,9 +31,38 @@
             branch_len: Value(8.0),
             kill_distance: 2.5,
             leaf_attraction_dist: 5.0,
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark")),
         )),
         SpawnLeaves((
-            selector: Tips,
+            shape: ConiferWhorl((
+                max_branch_length: 16.0,
+                max_branch_width: 5.5,
+                branch_sharpness: 0.6,
+                branch_thickness: 1,
+                branch_droop: 0.6,
+                tip_lift: 0.0,
+                rotation_step: 2.39996,
+                length_jitter_ratio: 0.15,
+                taper: Height(min_y: 2.0, max_y: 46.0),
+                arm_facing: Horizontal,
+            )),
+            filter: BranchFilter(
+                ignore_shapes: true,
+                generation_filter: Target(1),
+                iteration_filter: All,
+            ),
+            decoration: Gradient((
+                modulation: Some(Random(percent_offset: 0.08)),
+                axis: Y,
+                steps: [
+                    LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                ],
+            )),
+        )),
+        SpawnLeaves((
             shape: ConiferWhorl((
                 max_branch_length: 16.0,
                 max_branch_width: 5.5,
@@ -45,13 +77,18 @@
             )),
             decoration: Gradient((
                 axis: Y,
-                modulation: Some(Random(percent_offset: 0.08)),
+                modulation: Some(Random(percent_offset: 0.1)),
                 steps: [
-                    LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                    LeafGradientEntry(percent: 0.66, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
             )),
+            filter: BranchFilter(
+                ignore_shapes: true,
+                generation_filter: Target(0),
+                iteration_filter: Last,
+            ),
         )),
     ],
     bark_decorator: Single(VoxelMapping(name: "bark")),

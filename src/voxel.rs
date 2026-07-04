@@ -475,7 +475,7 @@ fn process_voxel(
                 rand_chacha::ChaCha8Rng::seed_from_u64(closest_branch_index as u64);
 
             let mut generation_percent =
-                closest_branch.generation as f32 / closest_branch.generation_total as f32;
+                closest_branch.iteration as f32 / closest_branch.iteration_total as f32;
             generation_percent = generation_percent.clamp(0.0, 1.0);
             bark_id =
                 decoration.get_voxel_id_percent(&mut branch_rng, sample_pos, generation_percent);
@@ -519,7 +519,7 @@ fn voxelize_conifer_whorls(
                 }
                 ConiferTaper::Generation { max_generation } => {
                     let max_gen = (*max_generation).max(1) as f32;
-                    1.0 - (b.generation as f32 / max_gen).clamp(0.0, 1.0)
+                    1.0 - (b.iteration as f32 / max_gen).clamp(0.0, 1.0)
                 }
                 ConiferTaper::None => 1.0,
             };
@@ -640,8 +640,9 @@ fn voxelize_conifer_whorls(
 
                 // droop: positive branch_droop droops tips down; negative lifts them.
                 // tip_lift adds an additional upward parabolic arc at the tip.
+                let scaled_tip_lift = whorl.tip_lift * info.taper_t;
                 let droop_y = dist_from_center * whorl.branch_droop;
-                let lift_y = normalized_dist * normalized_dist * whorl.tip_lift;
+                let lift_y = normalized_dist * normalized_dist * scaled_tip_lift;
                 let y_offset = -droop_y + lift_y;
 
                 for t in 0..whorl.branch_thickness {

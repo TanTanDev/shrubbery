@@ -1,4 +1,8 @@
-use std::{collections::HashMap, f32::consts::PI, time::Duration};
+use std::{
+    collections::HashMap,
+    f32::consts::PI,
+    time::{Duration, Instant},
+};
 
 use bevy::{
     color::palettes::css::{BROWN, WHITE, YELLOW},
@@ -129,7 +133,7 @@ fn setup(
     ));
 
     commands.insert_resource(TreeAssetHandle(
-        asset_server.load("space_colonizers/oak.tree.space_colonizer.ron"),
+        asset_server.load("space_colonizers/5.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/conifer_demo.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/2.tree.space_colonizer.ron"),
         // asset_server.load("space_colonizers/4.tree.space_colonizer.ron"),
@@ -247,9 +251,17 @@ fn spawn_on_asset_change(
         let Some(tree_asset) = tree_assets.get(&tree_handle.0) else {
             return;
         };
+        let start = Instant::now();
+        let now = Instant::now();
         let mut generator = tree_asset.0.make_generator(tree_seed.0);
+        info!("make generator: {:?}", now.elapsed());
+        let now = Instant::now();
         generator.execute_all_step(&tree_asset.0);
+        info!("execute all steps: {:?}", now.elapsed());
+        let now = Instant::now();
         let voxels = voxelize(&mut generator, &tree_asset.0);
+        info!("voxelize: {:?}", now.elapsed());
+        info!("total: {:?}", start.elapsed());
 
         let root_entity_id = commands
             .spawn((Transform::default(), Visibility::Visible, PreviewTreeTag))

@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use crate::{
     attractor::Attractor,
-    branch::Branch,
+    branch::{Branch, BranchFilter},
     math_utils::{dist_to_line, rotate_point},
     shape::Shape,
     voxel::{
@@ -9,7 +11,7 @@ use crate::{
     },
 };
 
-use glam::{IVec3, Vec2, Vec3, ivec3, vec2, vec3};
+use glam::{IVec3, Quat, Vec2, Vec3, ivec3, vec2, vec3};
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 #[cfg(feature = "serde")]
@@ -57,17 +59,36 @@ impl ValueOrRangeF32 {
     }
 }
 
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct GrowRadial {
+    /// how many branches to spawn
+    pub count: ValueOrRangeU32,
+    /// how much to angle
+    pub pitch_degrees: ValueOrRangeF32,
+    /// randomizes spacing between the branches
+    /// 0.0: spaced equal distance. 1.0: maximum chaos  
+    pub spacing_jitter: f32,
+    pub branch_len: ValueOrRangeF32,
+    pub branch_thickness: BranchThickness,
+    pub decoration: LeafDecoration,
+    #[serde(default)]
+    pub filter: BranchFilter,
+}
+
 /// instructions for how to build a space colonization tree
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SpaceColonizationStep {
     /// Grow branches in a fixed direction (trunk building)
     GrowDirection(GrowDirection),
-    /// Run space-colonization growth toward existing attractors
+    /// Grow branches in a special radial way
+    GrowRadial(GrowRadial),
+    /// grow branches using space-colonization toward existing attractors
     GrowToAttractors(GrowToAttractors),
-    /// Spawn attractors at a fixed world position
+    /// Spawn attractors, for space-colonization at a fixed world position
     SpawnAttractor(SpawnAttractors),
-    /// Spawn attractor shapes relative to each current tip branch
+    /// Spawn attractors,for space-colonization: placed relative to each current tip branch
     SpawnAttractorOnBranches(SpawnAttractorsOnBranches),
     /// Remove all existing attractors
     ClearAttractors,
@@ -102,8 +123,9 @@ pub struct GrowDirection {
     pub branch_len: ValueOrRangeF32,
     pub branch_thickness: BranchThickness,
     pub decoration: LeafDecoration,
+    #[serde(default)]
+    pub filter: BranchFilter,
 }
-// use some form of mapping
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -139,6 +161,8 @@ impl BranchThickness {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowToAttractors {
     pub times: ValueOrRangeU32,
+    #[serde(default)]
+    pub iteration_calculation: IterationCalculation,
     pub branch_len: ValueOrRangeF32,
     /// radius to delete attractors
     pub kill_distance: f32,
@@ -146,13 +170,20 @@ pub struct GrowToAttractors {
     pub leaf_attraction_dist: f32,
     pub decoration: LeafDecoration,
     pub branch_thickness: BranchThickness,
+    #[serde(default)]
+    pub filter: BranchFilter,
 }
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum TrunkGrowthDirection {
+    /// grow from parent normal
     Normal,
-    GravityLean { strength: f32 },
+    Target(Vec3),
+    /// grow from parent normal, but apply gravity
+    GravityLean {
+        strength: f32,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -234,11 +265,13 @@ impl SpawnAttractors {}
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnLeavesStep {
     /// Which branches to assign leaves to.
-    pub selector: BranchSelector,
+    // pub selector: BranchSelector,
     /// The voxel shape to place at each qualifying branch tip.
     pub shape: LeafShape,
     /// How to colour the leaf voxels.
     pub decoration: LeafDecoration,
+    #[serde(default)]
+    pub filter: BranchFilter,
     /// If true, overwrite any leaf group already assigned to a branch.
     /// If false (default), only undecorated branches are affected.
     #[serde(default)]
@@ -246,26 +279,26 @@ pub struct SpawnLeavesStep {
 }
 
 /// Which branches to use as anchor points when spawning per-branch attractors.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum BranchSelector {
-    /// Only branches with no children (current tips).
-    Tips,
-    /// Branches whose generation is exactly this value.
-    ExactGeneration(i32),
-    /// Branches whose generation equals or exceeds this value.
-    MinGeneration(i32),
-    /// Branches whose generation is at most this value.
-    MaxGeneration(i32),
-    /// Branches whose Y position is at or above this world-space value.
-    MinHeight(f32),
-    /// Branches whose Y position is at or below this world-space value.
-    MaxHeight(f32),
-    /// Tips that also satisfy a minimum generation.
-    TipsWithMinGeneration(i32),
-    /// Tips that also satisfy an exact generation.
-    TipsWithExactGeneration(i32),
-}
+// #[derive(Clone, Debug)]
+// #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+// pub enum BranchSelector {
+//     /// Only branches with no children (current tips).
+//     Tips,
+//     /// Branches whose generation is exactly this value.
+//     ExactGeneration(u32),
+//     /// Branches whose generation equals or exceeds this value.
+//     MinGeneration(u32),
+//     /// Branches whose generation is at most this value.
+//     MaxGeneration(u32),
+//     /// Branches whose Y position is at or above this world-space value.
+//     MinHeight(f32),
+//     /// Branches whose Y position is at or below this world-space value.
+//     MaxHeight(f32),
+//     /// Tips that also satisfy a minimum generation.
+//     TipsWithMinGeneration(u32),
+//     /// Tips that also satisfy an exact generation.
+//     TipsWithExactGeneration(u32),
+// }
 
 /// Offset direction when placing the attractor shape relative to a branch tip.
 #[derive(Clone, Debug)]
@@ -288,7 +321,7 @@ pub enum BranchOffsetDir {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnAttractorsOnBranches {
     /// Which branches act as origins for the spawned shapes.
-    pub selector: BranchSelector,
+    // pub selector: BranchSelector,
     /// How far along `offset_dir` from the branch tip to place the shape centre.
     pub offset_distance: f32,
     /// Direction to offset from the branch tip.
@@ -297,6 +330,8 @@ pub struct SpawnAttractorsOnBranches {
     pub shape: Shape,
     /// Density / jitter settings for attractor placement inside the shape.
     pub attractor_spacing: AttractorSpacing,
+    #[serde(default)]
+    pub filter: BranchFilter,
 }
 
 impl SpaceColonizationSettings {
@@ -311,14 +346,23 @@ impl SpaceColonizationSettings {
             }
         }
         for step in self.build_steps.iter_mut() {
-            if let SpaceColonizationStep::SpawnLeaves(s) = step {
-                s.decoration.resolve(voxel_definitions);
-            }
-            if let SpaceColonizationStep::GrowDirection(grow_dir) = step {
-                grow_dir.decoration.resolve(voxel_definitions);
-            }
-            if let SpaceColonizationStep::GrowToAttractors(grow_to_attractors) = step {
-                grow_to_attractors.decoration.resolve(voxel_definitions);
+            match step {
+                SpaceColonizationStep::GrowDirection(grow_direction) => {
+                    grow_direction.decoration.resolve(voxel_definitions);
+                }
+                SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
+                    grow_to_attractors.decoration.resolve(voxel_definitions);
+                }
+                SpaceColonizationStep::SpawnLeaves(spawn_leaves_step) => {
+                    spawn_leaves_step.decoration.resolve(voxel_definitions);
+                }
+                SpaceColonizationStep::GrowRadial(grow_radial) => {
+                    grow_radial.decoration.resolve(voxel_definitions);
+                }
+                // nothing to resolve
+                SpaceColonizationStep::SpawnAttractor(_)
+                | SpaceColonizationStep::SpawnAttractorOnBranches(_)
+                | SpaceColonizationStep::ClearAttractors => (),
             }
         }
     }
@@ -334,6 +378,8 @@ impl Default for SpaceColonizationSettings {
                 leaf_attraction_dist: 5.,
                 decoration: LeafDecoration::Single(VoxelMapping::default()),
                 branch_thickness: BranchThickness::ValueOrRange(ValueOrRangeF32::Value(1.0)),
+                filter: BranchFilter::default(),
+                iteration_calculation: IterationCalculation::default(),
             })],
             bark_decorator: BarkDecorator::Single(VoxelMapping::default()),
             branch_size_setting: BranchSizeSetting::default(),
@@ -370,6 +416,17 @@ impl Default for AttractorSpacing {
     }
 }
 
+/// describes how to assign iteration value
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum IterationCalculation {
+    #[default]
+    /// iteration from the current commands "times" variable
+    Iteration,
+    /// same iteration value as parent
+    Parent,
+}
+
 pub struct TreeGeneratorSpaceColonization {
     pub branches: Vec<Branch>,
     pub attractors: Vec<Attractor>,
@@ -381,23 +438,25 @@ pub struct TreeGeneratorSpaceColonization {
     pub leaf_groups: Vec<(LeafShape, LeafDecoration)>,
     // todo proper naming
     pub branch_decorations: Vec<LeafDecoration>,
+
+    pub oldest_generation: u32,
 }
 
 /// Returns true if `branch` matches the given selector.
 /// Centralised here so all steps (SpawnLeaves, SpawnAttractorOnBranches, etc.)
 /// use identical logic.
-fn branch_selector_matches(selector: &BranchSelector, b: &Branch) -> bool {
-    match selector {
-        BranchSelector::Tips => b.child_count == 0,
-        BranchSelector::ExactGeneration(generation) => b.generation == *generation,
-        BranchSelector::MinGeneration(min) => b.generation >= *min,
-        BranchSelector::MaxGeneration(max) => b.generation <= *max,
-        BranchSelector::MinHeight(min_y) => b.pos.y >= *min_y,
-        BranchSelector::MaxHeight(max_y) => b.pos.y <= *max_y,
-        BranchSelector::TipsWithMinGeneration(min) => b.child_count == 0 && b.generation >= *min,
-        BranchSelector::TipsWithExactGeneration(g) => b.child_count == 0 && b.generation == *g,
-    }
-}
+// fn branch_selector_matches(selector: &BranchSelector, b: &Branch) -> bool {
+//     match selector {
+//         BranchSelector::Tips => b.child_count == 0,
+//         BranchSelector::ExactGeneration(generation) => b.iteration == *generation,
+//         BranchSelector::MinGeneration(min) => b.iteration >= *min,
+//         BranchSelector::MaxGeneration(max) => b.iteration <= *max,
+//         BranchSelector::MinHeight(min_y) => b.pos.y >= *min_y,
+//         BranchSelector::MaxHeight(max_y) => b.pos.y <= *max_y,
+//         BranchSelector::TipsWithMinGeneration(min) => b.child_count == 0 && b.iteration >= *min,
+//         BranchSelector::TipsWithExactGeneration(g) => b.child_count == 0 && b.iteration == *g,
+//     }
+// }
 
 impl TreeGeneratorSpaceColonization {
     // pub fn new(root_pos: Vec3, initial_dir: Vec3, seed: u64) -> Self {
@@ -414,11 +473,12 @@ impl TreeGeneratorSpaceColonization {
                 attractors_count: 0,
                 original_dir: dir,
                 child_count: 0,
-                generation: i as i32,
+                iteration: i as u32,
                 leaf_group: None,
                 thickness: 1.0,
                 decoration_group: None,
-                generation_total: settings.trunk_settings.count as i32,
+                iteration_total: settings.trunk_settings.count as u32,
+                generation: 0,
             };
             branches.push(root);
         }
@@ -431,16 +491,18 @@ impl TreeGeneratorSpaceColonization {
             rng,
             leaf_groups: Vec::new(),
             branch_decorations: Vec::new(),
+            oldest_generation: 0,
         }
     }
 
     pub fn execute_step(&mut self, step: &SpaceColonizationStep) {
         match step {
             SpaceColonizationStep::GrowToAttractors(grow_to_attractors) => {
-                let times = grow_to_attractors.times.get(&mut self.rng);
-                for i in 0..times {
-                    self.grow_to_attractors(grow_to_attractors, i, times);
-                }
+                // let times = grow_to_attractors.times.get(&mut self.rng);
+                // for i in 0..times {
+                // self.grow_to_attractors(grow_to_attractors, i, times);
+                self.grow_to_attractors(grow_to_attractors);
+                // }
             }
             SpaceColonizationStep::SpawnAttractor(spawn_attractor) => {
                 spawn_attractor.shape.generate(
@@ -462,6 +524,9 @@ impl TreeGeneratorSpaceColonization {
             SpaceColonizationStep::ClearAttractors => {
                 self.attractors.clear();
             }
+            SpaceColonizationStep::GrowRadial(grow_radial) => {
+                self.grow_radial(grow_radial);
+            }
         }
     }
 
@@ -478,7 +543,10 @@ impl TreeGeneratorSpaceColonization {
         let origins: Vec<(Vec3, Vec3)> = self
             .branches
             .iter()
-            .filter(|b| branch_selector_matches(&s.selector, b))
+            // .filter(|b| branch_selector_matches(&s.selector, b))
+            // skip root branches
+            .filter(|b| b.parent_index.is_some())
+            .filter(|b| s.filter.should_include_branch(b, self.oldest_generation))
             .map(|b| (b.pos, b.dir))
             .collect();
 
@@ -512,8 +580,16 @@ impl TreeGeneratorSpaceColonization {
         self.leaf_groups
             .push((step.shape.clone(), step.decoration.clone()));
 
-        for branch in self.branches.iter_mut() {
-            let qualifies = branch_selector_matches(&step.selector, branch);
+        for branch in self
+            .branches
+            .iter_mut()
+            // skip root branches because they might register as
+            // IterationFilter::Last, accidentally resutling in shapes spawning at root
+            .filter(|branch| branch.parent_index.is_some())
+        {
+            let qualifies = step
+                .filter
+                .should_include_branch(branch, self.oldest_generation);
             if !qualifies {
                 continue;
             }
@@ -566,34 +642,146 @@ impl TreeGeneratorSpaceColonization {
     }
 
     pub fn grow_direction(&mut self, grow_trunk: &GrowDirection) {
+        let decoration_index = self.branch_decorations.len();
+        self.branch_decorations.push(grow_trunk.decoration.clone());
         let grow_times = grow_trunk.times.get(&mut self.rng);
 
-        let group_index = self.branch_decorations.len();
-        self.branch_decorations.push(grow_trunk.decoration.clone());
-        for i in 0..grow_times {
-            let thickness = grow_trunk
-                .branch_thickness
-                .get(i, grow_times, &mut self.rng);
+        let indices: Vec<usize> = self
+            .branches
+            .iter()
+            .enumerate()
+            .filter_map(|(i, branch)| {
+                grow_trunk
+                    .filter
+                    .should_include_branch(branch, self.oldest_generation)
+                    .then_some(i)
+            })
+            .collect();
 
-            // todo: instead find the ends of all root branches
-            let last_index = self.branches.len() - 1;
-            let mut new_branch = self.branches[last_index].next(
-                last_index,
-                grow_trunk.branch_len.get(&mut self.rng),
-                true,
-                &grow_trunk.trunk_growth_direction,
-                thickness,
-                grow_times as i32,
-            );
-            new_branch.decoration_group = Some(group_index);
-            self.branches[last_index].child_count += 1;
-            Self::update_bound(
-                &mut self.min_bounds,
-                &mut self.max_bounds,
-                new_branch.pos,
-                thickness,
-            );
-            self.branches.push(new_branch);
+        for branch_index in indices.iter() {
+            let mut running_index = *branch_index;
+            for i in 0..grow_times {
+                let thickness = grow_trunk
+                    .branch_thickness
+                    .get(i, grow_times, &mut self.rng);
+
+                let is_new_generation = i == 0;
+                let mut new_branch = self.branches[running_index].next(
+                    running_index,
+                    grow_trunk.branch_len.get(&mut self.rng),
+                    is_new_generation,
+                    &grow_trunk.trunk_growth_direction,
+                    thickness,
+                    i,
+                    grow_times,
+                );
+                new_branch.decoration_group = Some(decoration_index);
+                self.oldest_generation = u32::max(self.oldest_generation, new_branch.generation);
+                self.branches[*branch_index].child_count += 1;
+                Self::update_bound(
+                    &mut self.min_bounds,
+                    &mut self.max_bounds,
+                    new_branch.pos,
+                    thickness,
+                );
+                self.branches.push(new_branch);
+                running_index = self.branches.len() - 1;
+            }
+        }
+        // for i in 0..grow_times {
+        //     let thickness = grow_trunk
+        //         .branch_thickness
+        //         .get(i, grow_times, &mut self.rng);
+
+        //     for branch_index in indices.iter() {
+        //         let mut new_branch = self.branches[*branch_index].next(
+        //             *branch_index,
+        //             grow_trunk.branch_len.get(&mut self.rng),
+        //             false,
+        //             &grow_trunk.trunk_growth_direction,
+        //             thickness,
+        //             i,
+        //             grow_times,
+        //         );
+        //         new_branch.decoration_group = Some(decoration_index);
+        //         self.oldest_generation = u32::max(self.oldest_generation, new_branch.generation);
+        //         self.branches[*branch_index].child_count += 1;
+        //         Self::update_bound(
+        //             &mut self.min_bounds,
+        //             &mut self.max_bounds,
+        //             new_branch.pos,
+        //             thickness,
+        //         );
+        //         self.branches.push(new_branch);
+        //     }
+        // }
+    }
+    pub fn grow_radial(&mut self, grow_radial: &GrowRadial) {
+        let decoration_index = self.branch_decorations.len();
+        self.branch_decorations.push(grow_radial.decoration.clone());
+
+        let indices: Vec<usize> = self
+            .branches
+            .iter()
+            .enumerate()
+            .filter_map(|(i, branch)| {
+                grow_radial
+                    .filter
+                    .should_include_branch(branch, self.oldest_generation)
+                    .then_some(i)
+            })
+            .collect();
+
+        for branch_index in indices {
+            let count = grow_radial.count.get(&mut self.rng);
+            if count == 0 {
+                continue;
+            }
+
+            let rotation_offset = self.rng.random_range(0.0..360.0);
+
+            for i in 0..count {
+                let thickness = grow_radial.branch_thickness.get(i, count, &mut self.rng);
+                let spacing = 360.0 / count as f32;
+                let jitter = self.rng.random_range(
+                    -spacing * 0.5 * grow_radial.spacing_jitter
+                        ..spacing * 0.5 * grow_radial.spacing_jitter,
+                );
+
+                let yaw = (rotation_offset + spacing * i as f32 + jitter).to_radians();
+
+                let pitch = grow_radial.pitch_degrees.get(&mut self.rng).to_radians();
+                let mut dir = Vec3::X;
+
+                dir = Quat::from_rotation_y(yaw) * dir;
+                dir = Quat::from_axis_angle(dir.cross(Vec3::Y).normalize(), pitch) * dir;
+                // let dir = Quat::from_rotation_y(yaw)
+                //     * Vec3::Y
+                //     * ;
+
+                let mut new_branch = self.branches[branch_index].next(
+                    branch_index,
+                    grow_radial.branch_len.get(&mut self.rng),
+                    true,
+                    &TrunkGrowthDirection::Target(dir),
+                    thickness,
+                    i,
+                    count,
+                );
+
+                new_branch.decoration_group = Some(decoration_index);
+                self.oldest_generation = self.oldest_generation.max(new_branch.generation);
+                self.branches[branch_index].child_count += 1;
+
+                Self::update_bound(
+                    &mut self.min_bounds,
+                    &mut self.max_bounds,
+                    new_branch.pos,
+                    thickness,
+                );
+
+                self.branches.push(new_branch);
+            }
         }
     }
 
@@ -601,87 +789,131 @@ impl TreeGeneratorSpaceColonization {
     pub fn grow_to_attractors(
         &mut self,
         grow_to_attractors: &GrowToAttractors,
-        call_i: u32,
-        call_times: u32,
+        // call_i: u32,
+        // call_times: u32,
     ) {
+        let times = grow_to_attractors.times.get(&mut self.rng);
+
         let group_index = self.branch_decorations.len();
         self.branch_decorations
             .push(grow_to_attractors.decoration.clone());
-        for attractor in self.attractors.iter_mut() {
-            let mut closest_branch: Option<usize> = None;
-            let mut closest_dist = 999999.;
-            // find shortest signed distance of all branches
-            for (branch_index, branch) in self
-                .branches
-                .iter_mut()
-                // don't grow branches from the root
-                .enumerate()
-                .filter(|(_i, branch)| branch.parent_index.is_some())
-            {
-                let dist = attractor.pos.distance(branch.pos);
-                // is this branch to close to the leaf, discard it
-                if dist < grow_to_attractors.kill_distance {
-                    attractor.reached = true;
-                    closest_branch = None;
-                    break;
-                }
-                // to far away to be attracted towards
-                if dist > grow_to_attractors.leaf_attraction_dist {
-                    continue;
-                }
-                // record closest branch
-                if dist < closest_dist {
-                    closest_branch = Some(branch_index);
-                    closest_dist = dist;
-                }
-            }
-            // pull closest branch towards attractor
-            if let Some(closest_branch_index) = closest_branch {
-                let closest_branch_pos = self.branches[closest_branch_index].pos;
-                let new_branch_dir = attractor.pos - closest_branch_pos;
-                let new_branch_dir = new_branch_dir.normalize();
-                self.branches[closest_branch_index].dir += new_branch_dir;
-                self.branches[closest_branch_index].attractors_count += 1;
-            }
-        }
-        self.attractors.retain(|attractor| !attractor.reached);
 
-        // spawn new branches using previous calculations
-        let mut to_add = vec![];
-        for (branch_index, branch) in self
+        // find initial growing branches, based upon filtering
+        let mut active_branches: HashSet<usize> = self
             .branches
             .iter_mut()
             .enumerate()
-            .filter(|(_, branch)| branch.attractors_count > 0)
-        {
-            let mut branch_rng = rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64);
-            let thickness =
+            // never grow branches from the root
+            .filter(|(_i, branch)| branch.parent_index.is_some())
+            .filter(|(_i, branch)| {
                 grow_to_attractors
+                    .filter
+                    .should_include_branch(branch, self.oldest_generation)
+            })
+            .map(|(i, _branch)| i)
+            .collect();
+
+        for i in 0..times {
+            for attractor in self.attractors.iter_mut() {
+                let mut closest_branch: Option<usize> = None;
+                let mut closest_dist = 999999.;
+                // find shortest signed distance of all selected branches
+                // for (branch_index, branch) in self
+                //     .branches
+                //     .iter_mut()
+                //     // never grow branches from the root
+                //     .enumerate()
+                //     .filter(|(_i, branch)| branch.parent_index.is_some())
+                //     .filter(|(_i, branch)| {
+                //         grow_to_attractors
+                //             .filter
+                //             .should_include_branch(branch, self.oldest_generation)
+                //     })
+                // {
+                for (branch_index, branch) in self
+                    .branches
+                    .iter_mut()
+                    // never grow branches from the root
+                    .enumerate()
+                    .filter(|(i, _branch)| active_branches.contains(i))
+                {
+                    let dist = attractor.pos.distance(branch.pos);
+                    // is this branch to close to the leaf, discard it
+                    if dist < grow_to_attractors.kill_distance {
+                        attractor.reached = true;
+                        closest_branch = None;
+                        break;
+                    }
+                    // to far away to be attracted towards
+                    if dist > grow_to_attractors.leaf_attraction_dist {
+                        continue;
+                    }
+                    // record closest branch
+                    if dist < closest_dist {
+                        closest_branch = Some(branch_index);
+                        closest_dist = dist;
+                    }
+                }
+                // pull closest branch towards attractor
+                if let Some(closest_branch_index) = closest_branch {
+                    let closest_branch_pos = self.branches[closest_branch_index].pos;
+                    let new_branch_dir = attractor.pos - closest_branch_pos;
+                    let new_branch_dir = new_branch_dir.normalize();
+                    self.branches[closest_branch_index].dir += new_branch_dir;
+                    self.branches[closest_branch_index].attractors_count += 1;
+                }
+            }
+            self.attractors.retain(|attractor| !attractor.reached);
+
+            // spawn new branches using previous calculations
+            let mut to_add = vec![];
+            for (branch_index, branch) in self
+                .branches
+                .iter_mut()
+                .enumerate()
+                .filter(|(_, branch)| branch.attractors_count > 0)
+            {
+                let mut branch_rng = rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64);
+                let thickness = grow_to_attractors
                     .branch_thickness
-                    .get(call_i, call_times, &mut branch_rng);
-            branch.dir = branch.dir.normalize();
-            // todo: fix thickness
-            let mut new_branch = branch.next(
-                branch_index,
-                grow_to_attractors.branch_len.get(&mut self.rng),
-                true,
-                &TrunkGrowthDirection::Normal,
-                // todo: proper thickness
-                thickness,
-                1,
-            );
-            new_branch.decoration_group = Some(group_index);
-            branch.child_count += 1;
-            Self::update_bound(
-                &mut self.min_bounds,
-                &mut self.max_bounds,
-                new_branch.pos,
-                thickness,
-            );
-            to_add.push(new_branch);
-            branch.reset();
-        }
-        self.branches.extend(to_add);
+                    .get(i, times, &mut branch_rng);
+                branch.dir = branch.dir.normalize();
+
+                let (iteration_value, iteration_max) =
+                    match grow_to_attractors.iteration_calculation {
+                        IterationCalculation::Iteration => (i, times),
+                        IterationCalculation::Parent => (branch.iteration, branch.iteration_total),
+                    };
+
+                let mut new_branch = branch.next(
+                    branch_index,
+                    grow_to_attractors.branch_len.get(&mut self.rng),
+                    true,
+                    &TrunkGrowthDirection::Normal,
+                    thickness,
+                    iteration_value,
+                    iteration_max,
+                );
+                self.oldest_generation = u32::max(self.oldest_generation, new_branch.generation);
+                new_branch.decoration_group = Some(group_index);
+                branch.child_count += 1;
+                Self::update_bound(
+                    &mut self.min_bounds,
+                    &mut self.max_bounds,
+                    new_branch.pos,
+                    thickness,
+                );
+                to_add.push(new_branch);
+                branch.reset();
+            }
+            let branch_len = usize::checked_sub(self.branches.len(), 1).expect("can this happend");
+            self.branches.extend(to_add);
+            // the active branches have (maybe) grown, no need to recheck them
+            active_branches.clear();
+            // "flag" newly created branches to be able to grow next iteration.
+            let added_indices: Vec<usize> = (branch_len..self.branches.len()).collect();
+            active_branches.extend(added_indices);
+        } // times loop
     }
 
     /// spawn particles inside provided shape, based on settings

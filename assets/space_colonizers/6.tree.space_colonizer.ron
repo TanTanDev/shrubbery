@@ -16,25 +16,32 @@
             times: Value(7),
             trunk_growth_direction: Normal,
             branch_len: Value(5.0),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark_dark")),
         )),
         SpawnAttractor((
-            pos: (0.0, 14.0, 0.0),
-            shape: Cube((size_x: 10.0, size_y: 5.0, size_z: 10.0)),
-            attractor_spacing: AttractorSpacing(attractor_spacing: 3.0, jitter_ratio: 0.9),
+            pos: (0.0, 20.0, 0.0),
+            shape: Cube((size_x: 10.0, size_y: 20.0, size_z: 10.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 5.0, jitter_ratio: 0.9),
         )),
         GrowToAttractors((
-            times: Value(4),
-            branch_len: Value(3.0),
+            times: Value(2),
+            branch_len: Range(3.0, 9.0),
             kill_distance: 3.0,
-            leaf_attraction_dist: 5.0,
+            leaf_attraction_dist: 8.0,
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark_dark")),
         )),
         // No SpawnLeaves — lower branches stay bare bark.
         ClearAttractors,
 
-        // Phase 2: wide canopy high up
+        // // Phase 2: wide canopy high up
         SpawnAttractor((
-            pos: (0.0, 36.0, 0.0),
-            shape: Cube((size_x: 24.0, size_y: 10.0, size_z: 24.0)),
+            pos: (0.0, 45.0, 0.0),
+            shape: Cube((size_x: 34.0, size_y: 20.0, size_z: 34.0)),
             attractor_spacing: AttractorSpacing(attractor_spacing: 3.5, jitter_ratio: 1.0),
         )),
         GrowToAttractors((
@@ -42,8 +49,10 @@
             branch_len: Value(3.0),
             kill_distance: 4.0,
             leaf_attraction_dist: 6.0,
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark_bright")),
         )),
-        // MinHeight targets only the canopy branches, not the lower ones
+        // // MinHeight targets only the canopy branches, not the lower ones
         SpawnLeaves((
             selector: MinHeight(28.0),
             shape: Sphere(radius: Value(5.0)),
@@ -56,6 +65,12 @@
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
             )),
+            filter: BranchFilter(
+                // generation_filter: Target(5),
+                // generation_filter: All,
+                generation_filter: Last,
+                iteration_filter: All,
+            ),
         )),
     ],
     bark_decorator: Single(VoxelMapping(name: "bark")),
