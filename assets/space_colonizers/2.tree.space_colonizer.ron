@@ -49,7 +49,7 @@
             )),
             filter: BranchFilter(
                 ignore_shapes: true,
-                generation_filter: Target(1),
+                id_filter: Target(1),
                 iteration_filter: All,
             ),
             decoration: Gradient((
@@ -86,7 +86,7 @@
             )),
             filter: BranchFilter(
                 ignore_shapes: true,
-                generation_filter: Target(0),
+                id_filter: Target(0),
                 iteration_filter: Last,
             ),
         )),

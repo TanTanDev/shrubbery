@@ -73,6 +73,8 @@ pub struct GrowRadial {
     pub branch_thickness: BranchThickness,
     pub decoration: LeafDecoration,
     #[serde(default)]
+    pub assign_id: AssignBranchId,
+    #[serde(default)]
     pub filter: BranchFilter,
 }
 
@@ -115,6 +117,25 @@ pub struct SpaceColonizationSettings {
     pub branch_root_size_increaser: Option<BranchRootSizeIncreaser>,
 }
 
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum AssignBranchId {
+    /// auto increment branch id based upon previous
+    #[default]
+    AutoIncrement,
+    /// specify a generation id
+    AssignId(u32),
+}
+
+impl AssignBranchId {
+    pub fn get(&self, last_id: u32) -> u32 {
+        match self {
+            AssignBranchId::AutoIncrement => last_id + 1,
+            AssignBranchId::AssignId(id) => *id,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowDirection {
@@ -123,6 +144,8 @@ pub struct GrowDirection {
     pub branch_len: ValueOrRangeF32,
     pub branch_thickness: BranchThickness,
     pub decoration: LeafDecoration,
+    #[serde(default)]
+    pub assign_id: AssignBranchId,
     #[serde(default)]
     pub filter: BranchFilter,
 }
@@ -170,6 +193,8 @@ pub struct GrowToAttractors {
     pub leaf_attraction_dist: f32,
     pub decoration: LeafDecoration,
     pub branch_thickness: BranchThickness,
+    #[serde(default)]
+    pub assign_id: AssignBranchId,
     #[serde(default)]
     pub filter: BranchFilter,
 }
@@ -380,6 +405,7 @@ impl Default for SpaceColonizationSettings {
                 branch_thickness: BranchThickness::ValueOrRange(ValueOrRangeF32::Value(1.0)),
                 filter: BranchFilter::default(),
                 iteration_calculation: IterationCalculation::default(),
+                assign_id: AssignBranchId::AutoIncrement,
             })],
             bark_decorator: BarkDecorator::Single(VoxelMapping::default()),
             branch_size_setting: BranchSizeSetting::default(),
@@ -439,7 +465,7 @@ pub struct TreeGeneratorSpaceColonization {
     // todo proper naming
     pub branch_decorations: Vec<LeafDecoration>,
 
-    pub oldest_generation: u32,
+    pub last_known_id: u32,
 }
 
 /// Returns true if `branch` matches the given selector.
@@ -478,7 +504,7 @@ impl TreeGeneratorSpaceColonization {
                 thickness: 1.0,
                 decoration_group: None,
                 iteration_total: settings.trunk_settings.count as u32,
-                generation: 0,
+                id: 0,
             };
             branches.push(root);
         }
@@ -491,7 +517,7 @@ impl TreeGeneratorSpaceColonization {
             rng,
             leaf_groups: Vec::new(),
             branch_decorations: Vec::new(),
-            oldest_generation: 0,
+            last_known_id: 0,
         }
     }
 
@@ -546,7 +572,7 @@ impl TreeGeneratorSpaceColonization {
             // .filter(|b| branch_selector_matches(&s.selector, b))
             // skip root branches
             .filter(|b| b.parent_index.is_some())
-            .filter(|b| s.filter.should_include_branch(b, self.oldest_generation))
+            .filter(|b| s.filter.should_include_branch(b, self.last_known_id))
             .map(|b| (b.pos, b.dir))
             .collect();
 
@@ -589,7 +615,7 @@ impl TreeGeneratorSpaceColonization {
         {
             let qualifies = step
                 .filter
-                .should_include_branch(branch, self.oldest_generation);
+                .should_include_branch(branch, self.last_known_id);
             if !qualifies {
                 continue;
             }
@@ -653,11 +679,13 @@ impl TreeGeneratorSpaceColonization {
             .filter_map(|(i, branch)| {
                 grow_trunk
                     .filter
-                    .should_include_branch(branch, self.oldest_generation)
+                    .should_include_branch(branch, self.last_known_id)
                     .then_some(i)
             })
             .collect();
 
+        let id = grow_trunk.assign_id.get(self.last_known_id);
+        self.last_known_id = id;
         for branch_index in indices.iter() {
             let mut running_index = *branch_index;
             for i in 0..grow_times {
@@ -665,18 +693,16 @@ impl TreeGeneratorSpaceColonization {
                     .branch_thickness
                     .get(i, grow_times, &mut self.rng);
 
-                let is_new_generation = i == 0;
                 let mut new_branch = self.branches[running_index].next(
                     running_index,
                     grow_trunk.branch_len.get(&mut self.rng),
-                    is_new_generation,
+                    id,
                     &grow_trunk.trunk_growth_direction,
                     thickness,
                     i,
                     grow_times,
                 );
                 new_branch.decoration_group = Some(decoration_index);
-                self.oldest_generation = u32::max(self.oldest_generation, new_branch.generation);
                 self.branches[*branch_index].child_count += 1;
                 Self::update_bound(
                     &mut self.min_bounds,
@@ -727,10 +753,13 @@ impl TreeGeneratorSpaceColonization {
             .filter_map(|(i, branch)| {
                 grow_radial
                     .filter
-                    .should_include_branch(branch, self.oldest_generation)
+                    .should_include_branch(branch, self.last_known_id)
                     .then_some(i)
             })
             .collect();
+
+        let id = grow_radial.assign_id.get(self.last_known_id);
+        self.last_known_id = id;
 
         for branch_index in indices {
             let count = grow_radial.count.get(&mut self.rng);
@@ -762,7 +791,7 @@ impl TreeGeneratorSpaceColonization {
                 let mut new_branch = self.branches[branch_index].next(
                     branch_index,
                     grow_radial.branch_len.get(&mut self.rng),
-                    true,
+                    id,
                     &TrunkGrowthDirection::Target(dir),
                     thickness,
                     i,
@@ -770,7 +799,6 @@ impl TreeGeneratorSpaceColonization {
                 );
 
                 new_branch.decoration_group = Some(decoration_index);
-                self.oldest_generation = self.oldest_generation.max(new_branch.generation);
                 self.branches[branch_index].child_count += 1;
 
                 Self::update_bound(
@@ -798,6 +826,9 @@ impl TreeGeneratorSpaceColonization {
         self.branch_decorations
             .push(grow_to_attractors.decoration.clone());
 
+        let id = grow_to_attractors.assign_id.get(self.last_known_id);
+        self.last_known_id = id;
+
         // find initial growing branches, based upon filtering
         let mut active_branches: HashSet<usize> = self
             .branches
@@ -808,7 +839,7 @@ impl TreeGeneratorSpaceColonization {
             .filter(|(_i, branch)| {
                 grow_to_attractors
                     .filter
-                    .should_include_branch(branch, self.oldest_generation)
+                    .should_include_branch(branch, self.last_known_id)
             })
             .map(|(i, _branch)| i)
             .collect();
@@ -888,13 +919,13 @@ impl TreeGeneratorSpaceColonization {
                 let mut new_branch = branch.next(
                     branch_index,
                     grow_to_attractors.branch_len.get(&mut self.rng),
-                    true,
+                    id,
                     &TrunkGrowthDirection::Normal,
                     thickness,
                     iteration_value,
                     iteration_max,
                 );
-                self.oldest_generation = u32::max(self.oldest_generation, new_branch.generation);
+                self.last_known_id = u32::max(self.last_known_id, new_branch.id);
                 new_branch.decoration_group = Some(group_index);
                 branch.child_count += 1;
                 Self::update_bound(

@@ -21,6 +21,7 @@
             filter: BranchFilter(
                 ignore_root: false,
             ),
+            assign_id: AssignId(0),
         )),
         GrowDirection((
             times: Value(3),
@@ -31,6 +32,7 @@
             filter: BranchFilter(
                 iteration_filter: Last,
             ),
+            assign_id: AssignId(1),
         )),
         // coconut branches
         GrowRadial((
@@ -42,16 +44,17 @@
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "bark")),
             filter: BranchFilter(
-                generation_filter: Last,
+                id_filter: Last,
                 iteration_filter: Last,
             ),
+            assign_id: AssignId(2),
         )),
         // coconut balls
         SpawnLeaves((
             shape: Sphere(radius: Value(3.0)),
             decoration: Single(VoxelMapping(name: "bark_bright")),
             filter: BranchFilter(
-                generation_filter: Target(3),
+                id_filter: Target(2),
                 iteration_filter: All,
             ),
         )),
@@ -64,7 +67,7 @@
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "leaf_dark")),
             filter: BranchFilter(
-                generation_filter: Target(2),
+                id_filter: Target(1),
                 iteration_filter: Last,
             ),
         )),
@@ -77,7 +80,7 @@
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "leaf_dark")),
             filter: BranchFilter(
-                generation_filter: Target(2),
+                id_filter: Target(1),
                 iteration_filter: Last,
             ),
         )),
@@ -116,7 +119,7 @@
         //     )),
         //     filter: BranchFilter(
         //         ignore_shapes: true,
-        //         generation_filter: Last,
+        //         id_filter: Last,
         //         iteration_filter: All,
         //     ),
         //     decoration: Gradient((
@@ -136,7 +139,7 @@
         //     shape: Cube((size_x: 20.0, size_y: 20.0, size_z: 20.0)),
         //     attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 1.0),
         //     filter: BranchFilter(
-        //         generation_filter: All,
+        //         id_filter: All,
         //         iteration_filter: Last,
         //         // iteration_filter: Greater(6),
         //     ),
@@ -149,7 +152,7 @@
         //     branch_thickness: ValueOrRange(Value(1.0)),
         //     decoration: Single(VoxelMapping(name: "bark")),
         //     filter: BranchFilter(
-        //         // generation_filter: All,
+        //         // id_filter: All,
         //         // iteration_filter: Last,
         //         iteration_filter: Greater(5),
         //     ),
@@ -161,7 +164,7 @@
         //     shape: Sphere(radius: Value(1.8)),
         //     decoration: Single(VoxelMapping(name: "coconut")),
         //     filter: BranchFilter(
-        //         generation_filter: Target(1),
+        //         id_filter: Target(1),
         //         iteration_filter: All,
         //     ),
         // )),

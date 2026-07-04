@@ -18,7 +18,7 @@
             filter: BranchFilter(
                 ignore_root: false,
                 ignore_shapes: true,
-                generation_filter: All,
+                id_filter: All,
                 // iteration_filter: All,
                 iteration_filter: All,
             ),
@@ -59,7 +59,7 @@
             attractor_spacing: AttractorSpacing(attractor_spacing: 1.0, jitter_ratio: 1.0),
             filter: BranchFilter(
                 ignore_shapes: true,
-                generation_filter: Last,
+                id_filter: Last,
                 iteration_filter: All,
             ),
         )),
@@ -74,8 +74,8 @@
             branch_thickness: ValueOrRange(Value(2.0)),
             filter: BranchFilter(
                 ignore_shapes: true,
-                generation_filter: Last,
-                // generation_filter: AllGenerations,
+                id_filter: Last,
+                // id_filter: AllGenerations,
                 iteration_filter: Greater(2),
                 // iteration_filter: Lower(9),
                 // iteration_filter: All,
@@ -96,14 +96,14 @@
             )),
             filter: BranchFilter(
                 ignore_shapes: true,
-                generation_filter: Last,
+                id_filter: Last,
                 iteration_filter: All,
             ),
         )),
         SpawnAttractorOnBranches((
             filter: BranchFilter(
                 ignore_shapes: true,
-                generation_filter: Target(0),
+                id_filter: Target(0),
                 iteration_filter: All,
             ),
             offset_distance: 6.0,
@@ -116,7 +116,7 @@
             // iteration_calculation: Parent,
             filter: BranchFilter(
                 ignore_shapes: false,
-                generation_filter: Target(0),
+                id_filter: Target(0),
                 iteration_filter: Greater(3),
                 // iteration_filter: All,
             ),

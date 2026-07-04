@@ -19,8 +19,8 @@ pub struct Branch {
     pub attractors_count: i32,
     /// how many children branches this branch has
     pub child_count: i32,
-    /// what generation this branch was made
-    pub generation: u32,
+    /// id used for filtering
+    pub id: u32,
     /// what iteration this branch was made
     pub iteration: u32,
     /// what iteration this branch was made
@@ -39,17 +39,12 @@ impl Branch {
         &self,
         index: usize,
         branch_len: f32,
-        is_new_generation: bool,
+        id: u32,
         trunk_growth_dir: &TrunkGrowthDirection,
         thickness: f32,
         iteration: u32,
         iteration_total: u32,
     ) -> Self {
-        let mut generation = self.generation;
-        if is_new_generation {
-            generation += 1;
-        }
-
         let dir = match trunk_growth_dir {
             TrunkGrowthDirection::Normal => self.dir,
             TrunkGrowthDirection::GravityLean { strength } => {
@@ -71,7 +66,7 @@ impl Branch {
             decoration_group: None,
             iteration,
             iteration_total,
-            generation,
+            id,
         }
     }
 
@@ -104,7 +99,7 @@ pub struct BranchFilter {
     pub ignore_root: bool,
     // #[serde(default)]
     #[serde(default)]
-    pub generation_filter: GenerationFilter,
+    pub id_filter: IdFilter,
     // #[serde(default)]
     #[serde(default)]
     pub iteration_filter: IterationFilter,
@@ -115,14 +110,14 @@ impl Default for BranchFilter {
         Self {
             ignore_shapes: true,
             ignore_root: true,
-            generation_filter: GenerationFilter::default(),
+            id_filter: IdFilter::default(),
             iteration_filter: IterationFilter::default(),
         }
     }
 }
 
 impl BranchFilter {
-    pub fn should_include_branch(&self, branch: &Branch, last_generation: u32) -> bool {
+    pub fn should_include_branch(&self, branch: &Branch, last_id: u32) -> bool {
         if self.ignore_shapes {
             if branch.leaf_group.is_some() {
                 return false;
@@ -134,10 +129,7 @@ impl BranchFilter {
                 return false;
             }
         }
-        if !self
-            .generation_filter
-            .is_generation_included(branch, last_generation)
-        {
+        if !self.id_filter.is_id_included(branch, last_id) {
             return false;
         }
 
@@ -147,7 +139,6 @@ impl BranchFilter {
         {
             return false;
         }
-        // self.generation
         true
     }
 }
@@ -175,22 +166,22 @@ impl IterationFilter {
 
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum GenerationFilter {
+pub enum IdFilter {
     #[default]
-    /// only the last iteration of the last generation
+    /// only the last iteration of the last id
     Last,
-    /// include all generations
+    /// include all ids
     All,
-    /// specify exact generation
+    /// specify exact id
     Target(u32),
 }
 
-impl GenerationFilter {
-    pub fn is_generation_included(&self, branch: &Branch, last_generation: u32) -> bool {
+impl IdFilter {
+    pub fn is_id_included(&self, branch: &Branch, last_generation: u32) -> bool {
         match self {
-            GenerationFilter::All => true,
-            GenerationFilter::Last => branch.generation == last_generation,
-            GenerationFilter::Target(target_gen) => branch.generation == *target_gen,
+            IdFilter::All => true,
+            IdFilter::Last => branch.id == last_generation,
+            IdFilter::Target(target_gen) => branch.id == *target_gen,
         }
     }
 }
