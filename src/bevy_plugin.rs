@@ -34,6 +34,7 @@ pub enum RonLoaderError {
     RonSpannedError(#[from] ron::error::SpannedError),
 }
 
+// todo: rename to shrubbery asset
 #[derive(Clone, Default, Debug, Asset, TypePath, Serialize, Deserialize)]
 #[serde(transparent)] // collapse the inner tuple
 pub struct TreeSpaceColonizationAsset(pub SpaceColonizationSettings);

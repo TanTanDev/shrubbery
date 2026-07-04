@@ -7,7 +7,7 @@
         branch_len: Value(4.0),
         initial_dir: Random(
             y_rotation_range: Range(0, 360),
-            z_rotation_max: Range(4, 4),
+            z_rotation_max: Range(0, 4),
         ),
     ),
     build_steps: [

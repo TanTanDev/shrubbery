@@ -16,6 +16,8 @@
             // trunk_growth_direction: Normal,
             trunk_growth_direction: GravityLean(strength: 0.2),
             branch_len: Value(16.5),
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark")),
         )),
         SpawnAttractor((
             pos: (0.0, 20.0, 0.0),
@@ -28,6 +30,8 @@
             branch_len: Value(1.0),
             kill_distance: 2.5,
             leaf_attraction_dist: 5.0,
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark")),
         )),
         SpawnLeaves((
             selector: Tips,
