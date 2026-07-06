@@ -1,3 +1,4 @@
+use ahash::HashSet;
 use bevy::{
     asset::{Asset, AssetLoader},
     prelude::*,
@@ -13,7 +14,7 @@ impl Plugin for ShrubberyPlugin {
     fn build(&self, app: &mut bevy::app::App) {
         app.init_asset::<ShrubberyAsset>();
         app.init_asset_loader::<ShrubberyAssetLoader>();
-        app.insert_resource(TreeAssetsAwaitingSync(vec![]));
+        app.insert_resource(TreeAssetsAwaitingSync(HashSet::default()));
         app.add_systems(
             PostUpdate,
             (
@@ -66,7 +67,7 @@ impl AssetLoader for ShrubberyAssetLoader {
 
 /// these TreeAssets are awaiting to sync voxel names into VoxelIds, when VoxelDictionary are present
 #[derive(Resource)]
-pub struct TreeAssetsAwaitingSync(Vec<AssetId<ShrubberyAsset>>);
+pub struct TreeAssetsAwaitingSync(HashSet<AssetId<ShrubberyAsset>>);
 
 fn begin_sync_voxel_ids_with_tree_assets(
     mut tree_assets: ResMut<Assets<ShrubberyAsset>>,
@@ -88,7 +89,7 @@ fn begin_sync_voxel_ids_with_tree_assets(
                 };
             }
             None => {
-                trees_awaiting_sync.0.push(*id);
+                trees_awaiting_sync.0.insert(*id);
             }
         }
     }
@@ -100,7 +101,7 @@ fn sync_voxel_ids_with_tree_assets(
     voxel_definitions: Option<Res<VoxelDefinitions>>,
 ) {
     awaiting.0.retain(|id| {
-        let Some(asset) = tree_assets.get_mut(*id) else {
+        let Some(asset) = tree_assets.get_mut_untracked(*id) else {
             return false; // id is no longer valid, don't retain
         };
         let Some(voxel_definitions) = &voxel_definitions else {
