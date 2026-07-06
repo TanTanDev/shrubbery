@@ -7,15 +7,15 @@
         branch_len: Value(5.0),
         initial_dir: Random(
             y_rotation_range: Range(0, 360),
-            z_rotation_max: Range(1, 4),
+            z_rotation_max: Range(1, 7),
         ),
     ),
     build_steps: [
         // Strong lean for visible palm curve
         GrowDirection((
-            times: Value(9),
+            times: Value(5),
             trunk_growth_direction: GravityLean(strength: 0.2),
-            branch_len: Value(4.5),
+            branch_len: Range(3.5, 4.5),
             branch_thickness: ValueOrRange(Value(2.0)),
             decoration: Single(VoxelMapping(name: "bark")),
             filter: BranchFilter(
@@ -26,7 +26,7 @@
         GrowDirection((
             times: Value(3),
             trunk_growth_direction: Normal,
-            branch_len: Value(4.5),
+            branch_len: Value(2.5),
             branch_thickness: ValueOrRange(Value(4.0)),
             decoration: Single(VoxelMapping(name: "bark_dark")),
             filter: BranchFilter(
@@ -40,7 +40,7 @@
             spacing_jitter: 0.5,
             pitch_degrees: Value(-50.0),
             trunk_growth_direction: Normal,
-            branch_len: Range(5.0, 14.0),
+            branch_len: Value(7.0),
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "bark")),
             filter: BranchFilter(
@@ -51,7 +51,7 @@
         )),
         // coconut balls
         SpawnLeaves((
-            shape: Sphere(radius: Value(3.0)),
+            shape: Sphere(radius: Value(2.0)),
             decoration: Single(VoxelMapping(name: "bark_bright")),
             filter: BranchFilter(
                 id_filter: Target(2),
@@ -61,9 +61,9 @@
         GrowRadial((
             count: Range(2,4),
             spacing_jitter: 1.0,
-            pitch_degrees: Value(10.0),
+            pitch_degrees: Value(-10.0),
             trunk_growth_direction: Normal,
-            branch_len: Value(10.0),
+            branch_len: Value(7.0),
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "leaf_dark")),
             filter: BranchFilter(
@@ -72,11 +72,11 @@
             ),
         )),
         GrowRadial((
-            count: Range(2, 4),
-            spacing_jitter: 1.0,
+            count: Range(3, 5),
+            spacing_jitter: 0.5,
             pitch_degrees: Value(40.0),
             trunk_growth_direction: Normal,
-            branch_len: Value(10.0),
+            branch_len: Value(6.0),
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "leaf_dark")),
             filter: BranchFilter(
@@ -87,8 +87,8 @@
         GrowDirection((
             times: Value(3),
             trunk_growth_direction: GravityLean(strength: 0.6),
-            branch_len: Value(7.5),
-            branch_thickness: ValueOrRange(Value(2.0)),
+            branch_len: Value(5.5),
+            branch_thickness: ValueOrRange(Value(1.0)),
             // decoration: Single(VoxelMapping(name: "leaf_bright")),
             decoration: Gradient((
                 axis: Y,

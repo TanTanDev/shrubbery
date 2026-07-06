@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{Asset, AssetLoader, ron},
+    asset::{Asset, AssetLoader},
     prelude::*,
     reflect::TypePath,
 };
