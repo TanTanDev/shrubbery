@@ -299,7 +299,7 @@ fn rebuild_tree_on_update(
         let unique_tree_seed = tree_seed.0 + i as u64;
         let mut generator = tree_asset.0.make_generator(unique_tree_seed);
         generator.execute_all_step(&tree_asset.0);
-        let voxels = voxelize(&mut generator);
+        let voxels = voxelize(&mut generator, unique_tree_seed);
 
         for (pos, voxel_id) in voxels.into_iter() {
             let color = voxel_materials.color(voxel_id.0 as usize);

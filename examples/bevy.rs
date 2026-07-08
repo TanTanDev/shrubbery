@@ -255,7 +255,7 @@ fn spawn_on_asset_change(
         generator.execute_all_step(&tree_asset.0);
         info!("execute all steps: {:?}", now.elapsed());
         let now = Instant::now();
-        let voxels = voxelize(&mut generator);
+        let voxels = voxelize(&mut generator, tree_seed.0);
         info!("voxelize: {:?}", now.elapsed());
         info!("total: {:?}", start.elapsed());
         info!("bounds: {:?}", generator.get_bounds());

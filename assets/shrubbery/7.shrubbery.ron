@@ -43,6 +43,7 @@
                 // Swapped min/max: base is slim, apex is wide.
                 taper: Height(min_y: 36.0, max_y: 0.0),
                 arm_facing: Horizontal,
+                whorl_spacing: 1.0,
             )),
             decoration: Gradient((
                 axis: Y,

@@ -221,30 +221,20 @@ impl LeafDecoration {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafShape {
-    Sphere {
-        radius: ValueOrRangeF32,
-    },
-    /// Conifer-style whorl emitted at each leaf branch.
-    ///
-    /// Voxels are emitted directly (generative), bypassing the per-cell
-    /// bounding-box scan, so this is much cheaper than `Sphere` for sparse
-    /// canopy geometry.
+    Sphere { radius: ValueOrRangeF32 },
     ConiferWhorl(ConiferWhorlShape),
+    StarLeaf(StarLeafShape),
 }
 
-/// Controls which direction the two whorl arms face outward from the branch.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum ArmFacing {
-    /// Arms are horizontal (perpendicular to world Y). Default for conifers.
-    Horizontal,
-    /// Arms shoot outward in a random direction for each branch, sampled
-    /// within a cone around WorldUp.  Used for palm fronds fanning in all
-    /// directions from a single crown tip.
-    Random {
-        /// Maximum angle from horizontal in degrees (0 = flat, 90 = full sphere).
-        max_pitch_degrees: f32,
-    },
+pub struct StarLeafShape {
+    pub arm_length: ValueOrRangeF32,
+    pub arm_width: f32,
+    pub branch_sharpness: f32,
+    pub thickness: u32,
+    pub droop: f32,
+    pub tip_lift: f32,
 }
 
 /// How the whorl radius/length scales from base to apex.
@@ -285,14 +275,8 @@ pub struct ConiferWhorlShape {
     pub length_jitter_ratio: f32,
     /// What drives the taper from fat (base) to slim (apex).
     pub taper: ConiferTaper,
-    /// Which direction the arms face outward from the branch.
-    /// `Horizontal` for conifers, `Random` for palm fronds.
-    #[serde(default = "default_arm_facing")]
-    pub arm_facing: ArmFacing,
-}
-
-fn default_arm_facing() -> ArmFacing {
-    ArmFacing::Horizontal
+    /// Distance between whorl layers: 1 = dense, 2= one air space between layers
+    pub whorl_spacing: f32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -357,6 +341,7 @@ fn leaf_padding(generator: &ShrubberyGenerator) -> i32 {
         .map(|(shape, _)| match shape {
             LeafShape::Sphere { radius: r } => r.max().ceil() as i32,
             LeafShape::ConiferWhorl(w) => w.max_branch_length.ceil() as i32,
+            LeafShape::StarLeaf(s) => s.arm_length.max().ceil() as i32,
         })
         .max()
         .unwrap_or(0)
@@ -365,7 +350,7 @@ fn leaf_padding(generator: &ShrubberyGenerator) -> i32 {
 type BranchMap = ahash::HashMap<IVec3, (f32, VoxelId)>;
 type VoxelMap = ahash::HashMap<IVec3, VoxelId>;
 
-pub fn voxelize(shrubbery: &mut ShrubberyGenerator) -> VoxelMap {
+pub fn voxelize(shrubbery: &mut ShrubberyGenerator, tree_seed: u64) -> VoxelMap {
     let (mut min_bounds, mut max_bounds) = shrubbery.get_bounds();
     let padding = leaf_padding(shrubbery);
     min_bounds -= IVec3::splat(padding);
@@ -377,7 +362,7 @@ pub fn voxelize(shrubbery: &mut ShrubberyGenerator) -> VoxelMap {
         .into_iter()
         .map(|(pos, (_dist, voxel_id))| (pos, voxel_id))
         .collect();
-    process_shapes(shrubbery, &mut voxel_map);
+    process_shapes(shrubbery, &mut voxel_map, tree_seed);
 
     voxel_map
 }
@@ -421,7 +406,44 @@ fn process_sphere_leaves(
     }
 }
 
-fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap) {
+fn voxelize_star_leaves(
+    generator: &ShrubberyGenerator,
+    group_idx: usize,
+    star: &StarLeafShape,
+    decoration: &LeafDecoration,
+    voxels: &mut VoxelMap,
+    tree_seed: u64,
+) {
+    for (layer_index, b) in generator
+        .branches
+        .iter()
+        .filter(|b| b.leaf_group == Some(group_idx))
+        .enumerate()
+    {
+        let mut rng = ChaCha8Rng::seed_from_u64(layer_index as u64 ^ 0x5eaf1eaf);
+        let arm_length = star.arm_length.get(&mut rng);
+
+        emit_star_arms(
+            &ArmShapeParams {
+                pos: b.pos,
+                dir: b.dir,
+                layer_index: layer_index as u32,
+                arm_length,
+                arm_width: star.arm_width,
+                branch_sharpness: star.branch_sharpness,
+                thickness: star.thickness,
+                droop: star.droop,
+                tip_lift: star.tip_lift,
+                rotation_step: None,
+            },
+            decoration,
+            voxels,
+            tree_seed,
+        );
+    }
+}
+
+fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap, tree_seed: u64) {
     for (leaf_index, (leaf_shape, leaf_decoration)) in shrubbery.leaf_groups.iter().enumerate() {
         match leaf_shape {
             LeafShape::Sphere { radius } => {
@@ -434,6 +456,17 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap)
                     conifer_whorl_shape,
                     leaf_decoration,
                     &mut voxels,
+                    tree_seed,
+                );
+            }
+            LeafShape::StarLeaf(star_leaf_shape) => {
+                voxelize_star_leaves(
+                    shrubbery,
+                    leaf_index,
+                    star_leaf_shape,
+                    &leaf_decoration,
+                    &mut voxels,
+                    tree_seed,
                 );
             }
         }
@@ -509,177 +542,204 @@ fn point_segment_distance_squared(point: Vec3, start: Vec3, end: Vec3) -> f32 {
     point.distance_squared(closest)
 }
 
-/// Emit conifer-whorl voxels directly from each branch assigned to this leaf group.
+fn conifer_taper_t(taper: &ConiferTaper, pos_y: f32, iteration: u32) -> f32 {
+    match taper {
+        ConiferTaper::Height { min_y, max_y } => {
+            let range = (max_y - min_y).max(0.001);
+            1.0 - ((pos_y - min_y) / range).clamp(0.0, 1.0)
+        }
+        ConiferTaper::Generation { max_generation } => {
+            let max_gen = (*max_generation).max(1) as f32;
+            1.0 - (iteration as f32 / max_gen).clamp(0.0, 1.0)
+        }
+        ConiferTaper::None => 1.0,
+    }
+}
+
 fn voxelize_conifer_whorls(
     generator: &ShrubberyGenerator,
     group_idx: usize,
     whorl: &ConiferWhorlShape,
     decoration: &LeafDecoration,
     voxels: &mut VoxelMap,
+    tree_seed: u64,
 ) {
     struct WhorlInfo {
-        branch_index: usize,
+        layer_index: u32,
         pos: Vec3,
         dir: Vec3,
         taper_t: f32,
     }
 
-    let whorl_infos: Vec<WhorlInfo> = generator
+    let mut whorl_infos: Vec<WhorlInfo> = Vec::new();
+    let mut layer_counter: u32 = 0;
+    let spacing = whorl.whorl_spacing.max(0.1);
+
+    for b in generator
         .branches
         .iter()
-        .enumerate()
-        .filter(|(_, b)| b.leaf_group == Some(group_idx))
-        .map(|(i, b)| {
-            let taper_t = match &whorl.taper {
-                ConiferTaper::Height { min_y, max_y } => {
-                    let range = (max_y - min_y).max(0.001);
-                    1.0 - ((b.pos.y - min_y) / range).clamp(0.0, 1.0)
-                }
-                ConiferTaper::Generation { max_generation } => {
-                    let max_gen = (*max_generation).max(1) as f32;
-                    1.0 - (b.iteration as f32 / max_gen).clamp(0.0, 1.0)
-                }
-                ConiferTaper::None => 1.0,
-            };
-            WhorlInfo {
-                branch_index: i,
+        .filter(|b| b.leaf_group == Some(group_idx))
+    {
+        let Some(parent_index) = b.parent_index else {
+            // No parent segment to interpolate — fall back to one whorl at
+            // the branch endpoint (e.g. the root branch).
+            let taper_t = conifer_taper_t(&whorl.taper, b.pos.y, b.iteration);
+            whorl_infos.push(WhorlInfo {
+                layer_index: layer_counter,
                 pos: b.pos,
                 dir: b.dir,
                 taper_t,
-            }
-        })
-        .collect();
+            });
+            layer_counter += 1;
+            continue;
+        };
+
+        let parent = &generator.branches[parent_index];
+        let seg = b.pos - parent.pos; // segment vector — carries any lean/angle
+        let seg_len = seg.length();
+        let steps = (seg_len / spacing).ceil().max(1.0) as u32;
+
+        let taper_t_start = conifer_taper_t(&whorl.taper, parent.pos.y, parent.iteration);
+        let taper_t_end = conifer_taper_t(&whorl.taper, b.pos.y, b.iteration);
+
+        // t in (0,1], so each sub-layer's root center walks up the leaning
+        // segment exactly, and the final step lands on b.pos (no duplicate
+        // whorl at the shared joint with the next segment).
+        for s in 0..steps {
+            let t = (s + 1) as f32 / steps as f32;
+            let pos = parent.pos + seg * t; // interpolated root center, tracks lean
+            let taper_t = taper_t_start + (taper_t_end - taper_t_start) * t;
+            whorl_infos.push(WhorlInfo {
+                layer_index: layer_counter,
+                pos,
+                dir: seg,
+                taper_t,
+            });
+            layer_counter += 1;
+        }
+    }
 
     for info in &whorl_infos {
-        let mut branch_rng =
-            rand_chacha::ChaCha8Rng::seed_from_u64(info.branch_index as u64 ^ 0xdeadbeef_cafebabe);
-
+        let mut seed_rng = ChaCha8Rng::seed_from_u64(info.layer_index as u64 + tree_seed);
         let length_jitter = if whorl.length_jitter_ratio > 0.0 {
             let max_j = whorl.max_branch_length * whorl.length_jitter_ratio;
-            branch_rng.random_range(-max_j..max_j)
+            seed_rng.random_range(-max_j..max_j)
         } else {
             0.0
         };
-
         let arm_length = ((whorl.max_branch_length * info.taper_t) + length_jitter).max(0.0);
         let arm_width = whorl.max_branch_width * info.taper_t;
 
-        if arm_length < 0.5 {
-            continue;
-        }
+        emit_star_arms(
+            &ArmShapeParams {
+                pos: info.pos,
+                dir: info.dir,
+                layer_index: info.layer_index,
+                arm_length,
+                arm_width,
+                branch_sharpness: whorl.branch_sharpness,
+                thickness: whorl.branch_thickness,
+                droop: whorl.branch_droop,
+                tip_lift: whorl.tip_lift * info.taper_t,
+                rotation_step: Some(whorl.rotation_step),
+            },
+            decoration,
+            voxels,
+            tree_seed,
+        );
+    }
+}
 
-        // Build the primary arm axis depending on ArmFacing.
-        let (arm_a, arm_b) = match &whorl.arm_facing {
-            ArmFacing::Horizontal => {
-                // Arms perpendicular to the branch direction in the horizontal plane.
-                let branch_dir = info.dir.normalize_or(Vec3::Y);
-                let forward = Vec3::new(branch_dir.z, 0.0, -branch_dir.x).normalize_or(Vec3::X);
-                let right = forward.cross(Vec3::Y).normalize_or(Vec3::Z);
-                let angle = info.branch_index as f32 * whorl.rotation_step;
-                let (sin_a, cos_a) = (angle.sin(), angle.cos());
-                let arm_a = forward * cos_a - right * sin_a;
-                let arm_b = forward * sin_a + right * cos_a;
-                (arm_a, arm_b)
-            }
-            ArmFacing::Random { max_pitch_degrees } => {
-                // Each branch gets a unique random direction for a palm-frond fan.
-                // We generate two independent random arms spread ~90° apart.
-                let max_pitch = max_pitch_degrees.to_radians();
-                let yaw_a = branch_rng.random_range(0.0..std::f32::consts::TAU);
-                let pitch_a = branch_rng.random_range(0.0..max_pitch);
-                let yaw_b =
-                    yaw_a + std::f32::consts::FRAC_PI_2 + branch_rng.random_range(-0.3..0.3);
-                let pitch_b = branch_rng.random_range(0.0..max_pitch);
-                let arm_a = Vec3::new(
-                    yaw_a.cos() * pitch_a.cos(),
-                    -pitch_a.sin(),
-                    yaw_a.sin() * pitch_a.cos(),
-                );
-                let arm_b = Vec3::new(
-                    yaw_b.cos() * pitch_b.cos(),
-                    -pitch_b.sin(),
-                    yaw_b.sin() * pitch_b.cos(),
-                );
-                (arm_a.normalize_or(Vec3::X), arm_b.normalize_or(Vec3::Z))
-            }
-        };
+struct ArmShapeParams {
+    pos: Vec3,
+    dir: Vec3,
+    layer_index: u32,
+    arm_length: f32,
+    arm_width: f32,
+    branch_sharpness: f32,
+    thickness: u32,
+    droop: f32,
+    tip_lift: f32,
+    // if Some: set rotation based upon layer index
+    // if none: RANDOMIZE completely
+    rotation_step: Option<f32>,
+}
 
-        // Cross-arm axes (perpendicular to each arm in the horizontal plane).
-        let cross_a = Vec3::new(-arm_a.z, 0.0, arm_a.x).normalize_or(Vec3::Z);
-        let cross_b = Vec3::new(-arm_b.z, 0.0, arm_b.x).normalize_or(Vec3::X);
+fn emit_star_arms(
+    params: &ArmShapeParams,
+    decoration: &LeafDecoration,
+    voxels: &mut VoxelMap,
+    tree_seed: u64,
+) {
+    if params.arm_length < 0.5 {
+        return;
+    }
 
-        let search_radius = arm_length.ceil() as i32;
+    let mut rng = ChaCha8Rng::seed_from_u64(params.layer_index as u64 + tree_seed + 99);
 
-        for r_x in -search_radius..=search_radius {
+    let branch_dir = params.dir.normalize_or(Vec3::Y);
+    let forward = Vec3::new(branch_dir.z, 0.0, -branch_dir.x).normalize_or(Vec3::X);
+    let right = forward.cross(Vec3::Y).normalize_or(Vec3::Z);
+    let angle = match params.rotation_step {
+        Some(rotation_step) => params.layer_index as f32 * rotation_step,
+        None => rng.random(),
+    };
+    let (sin_a, cos_a) = (angle.sin(), angle.cos());
+    let arm_a = forward * cos_a - right * sin_a;
+    let arm_b = forward * sin_a + right * cos_a;
+
+    let cross_a = Vec3::new(-arm_a.z, 0.0, arm_a.x).normalize_or(Vec3::Z);
+    let cross_b = Vec3::new(-arm_b.z, 0.0, arm_b.x).normalize_or(Vec3::X);
+
+    let arm_length = params.arm_length;
+    let arm_width = params.arm_width;
+    let search_radius = arm_length.ceil() as i32;
+
+    for r_x in -search_radius..=search_radius {
+        for r_z in -search_radius..=search_radius {
             let fx = r_x as f32;
-            for r_z in -search_radius..=search_radius {
-                let fz = r_z as f32;
-                let offset_h = Vec3::new(fx, 0.0, fz);
+            let fz = r_z as f32;
+            let offset_h = Vec3::new(fx, 0.0, fz);
 
-                let proj_a_main = offset_h.dot(arm_a);
-                let proj_a_cross = offset_h.dot(cross_a);
-                let proj_b_main = offset_h.dot(arm_b);
-                let proj_b_cross = offset_h.dot(cross_b);
+            let proj_a_main = offset_h.dot(arm_a);
+            let proj_a_cross = offset_h.dot(cross_a);
+            let proj_b_main = offset_h.dot(arm_b);
+            let proj_b_cross = offset_h.dot(cross_b);
 
-                let progress_a = if arm_length > 0.0 {
-                    proj_a_main.abs() / arm_length
-                } else {
-                    1.0
-                };
-                let allowed_w_a = arm_width * (1.0 - progress_a * whorl.branch_sharpness);
+            let progress_a = proj_a_main.abs() / arm_length;
+            let allowed_w_a = arm_width * (1.0 - progress_a * params.branch_sharpness);
+            let progress_b = proj_b_main.abs() / arm_length;
+            let allowed_w_b = arm_width * (1.0 - progress_b * params.branch_sharpness);
 
-                let progress_b = if arm_length > 0.0 {
-                    proj_b_main.abs() / arm_length
-                } else {
-                    1.0
-                };
-                let allowed_w_b = arm_width * (1.0 - progress_b * whorl.branch_sharpness);
+            let in_arm_a =
+                proj_a_main.abs() <= arm_length && proj_a_cross.abs() <= allowed_w_a.max(0.5);
+            let in_arm_b =
+                proj_b_main.abs() <= arm_length && proj_b_cross.abs() <= allowed_w_b.max(0.5);
+            let is_center = r_x == 0 && r_z == 0;
 
-                let in_arm_a = arm_length > 0.0
-                    && proj_a_main.abs() <= arm_length
-                    && proj_a_cross.abs() <= allowed_w_a.max(0.5); // min 0.5 so centre voxels always fill
+            if !in_arm_a && !in_arm_b && !is_center {
+                continue;
+            }
 
-                let in_arm_b = arm_length > 0.0
-                    && proj_b_main.abs() <= arm_length
-                    && proj_b_cross.abs() <= allowed_w_b.max(0.5);
+            let dist_from_center = (fx * fx + fz * fz).sqrt();
+            let normalized_dist = (dist_from_center / arm_length).clamp(0.0, 1.0);
+            let droop_y = dist_from_center * params.droop;
+            let lift_y = normalized_dist * normalized_dist * params.tip_lift;
+            let y_offset = -droop_y + lift_y;
 
-                let is_center = r_x == 0 && r_z == 0;
-
-                if !in_arm_a && !in_arm_b && !is_center {
-                    continue;
-                }
-
-                let dist_from_center = (fx * fx + fz * fz).sqrt();
-                let normalized_dist = if arm_length > 0.0 {
-                    (dist_from_center / arm_length).clamp(0.0, 1.0)
-                } else {
-                    1.0
-                };
-
-                // droop: positive branch_droop droops tips down; negative lifts them.
-                // tip_lift adds an additional upward parabolic arc at the tip.
-                let scaled_tip_lift = whorl.tip_lift * info.taper_t;
-                let droop_y = dist_from_center * whorl.branch_droop;
-                let lift_y = normalized_dist * normalized_dist * scaled_tip_lift;
-                let y_offset = -droop_y + lift_y;
-
-                for t in 0..whorl.branch_thickness {
-                    let world_x = info.pos.x + fx;
-                    let world_y = info.pos.y + y_offset - t as f32;
-                    let world_z = info.pos.z + fz;
-
-                    let grid_pos = ivec3(
-                        world_x.floor() as i32,
-                        world_y.floor() as i32,
-                        world_z.floor() as i32,
-                    );
-                    let sample_pos = vec3(world_x, world_y, world_z);
-
-                    let voxel_id =
-                        decoration.get_voxel_id(&mut branch_rng, sample_pos, info.pos, arm_length);
-
-                    voxels.insert(grid_pos, voxel_id);
-                }
+            for t in 0..params.thickness {
+                let world_x = params.pos.x + fx;
+                let world_y = params.pos.y + y_offset - t as f32;
+                let world_z = params.pos.z + fz;
+                let grid_pos = ivec3(
+                    world_x.floor() as i32,
+                    world_y.floor() as i32,
+                    world_z.floor() as i32,
+                );
+                let sample_pos = vec3(world_x, world_y, world_z);
+                let voxel_id =
+                    decoration.get_voxel_id(&mut rng, sample_pos, params.pos, arm_length);
+                voxels.insert(grid_pos, voxel_id);
             }
         }
     }

@@ -46,6 +46,7 @@
                 length_jitter_ratio: 0.00,
                 taper: Height(min_y: 2.0, max_y: 46.0),
                 arm_facing: Random(max_pitch_degrees: 999.0),
+                whorl_spacing: 1.0,
                 // arm_facing: Horizontal,
             )),
             decoration: Gradient((

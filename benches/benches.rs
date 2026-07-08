@@ -7,7 +7,7 @@ use std::hint::black_box;
 fn build_and_voxelize(tree_asset: &ShrubberySettings, seed: u64) {
     let mut generator = tree_asset.make_generator(seed);
     generator.execute_all_step(&tree_asset);
-    let _voxels = voxelize(&mut generator);
+    let _voxels = voxelize(&mut generator, seed);
 }
 
 pub fn load_all_shrubberies() -> Vec<(String, ShrubberySettings)> {
