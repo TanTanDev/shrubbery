@@ -133,7 +133,7 @@ fn setup(
     ));
 
     commands.insert_resource(TreeAssetHandle(
-        asset_server.load("shrubbery/2.shrubbery.ron"),
+        asset_server.load("shrubbery/5.shrubbery.ron"),
     ));
 
     commands.insert_resource(AmbientLight {
@@ -255,9 +255,10 @@ fn spawn_on_asset_change(
         generator.execute_all_step(&tree_asset.0);
         info!("execute all steps: {:?}", now.elapsed());
         let now = Instant::now();
-        let voxels = voxelize(&mut generator, &tree_asset.0);
+        let voxels = voxelize(&mut generator);
         info!("voxelize: {:?}", now.elapsed());
         info!("total: {:?}", start.elapsed());
+        info!("bounds: {:?}", generator.get_bounds());
 
         let root_entity_id = commands
             .spawn((Transform::default(), Visibility::Visible, PreviewTreeTag))

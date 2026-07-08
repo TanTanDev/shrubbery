@@ -10,9 +10,7 @@ use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    math_utils::percent_in_range,
-    prelude::ShrubberyGenerator,
-    shrubbery::{BarkDecorator, ShrubberySettings, ValueOrRangeF32},
+    math_utils::percent_in_range, prelude::ShrubberyGenerator, shrubbery::ValueOrRangeF32,
 };
 const EPSILON: f32 = 0.0001;
 
@@ -207,7 +205,6 @@ impl LeafDecoration {
                 }
                 percent = percent.clamp(0.0, 1.0);
 
-                // let mut selected = VoxelId::default();
                 let selected = g
                     .steps
                     .iter()
@@ -215,13 +212,6 @@ impl LeafDecoration {
                     .or_else(|| g.steps.last())
                     .map(|s| s.voxel_mapping.id)
                     .unwrap_or_default();
-                // for step in g.steps.iter().find(|s| percent < step) {
-                // for step in g.steps.iter() {
-                //     if percent > step.percent {
-                //         continue;
-                //     }
-                //     selected = step.voxel_mapping.id;
-                // }
                 selected
             }
         }
@@ -372,132 +362,160 @@ fn leaf_padding(generator: &ShrubberyGenerator) -> i32 {
         .unwrap_or(0)
 }
 
-/// Construct voxel positions for the tree.
-///
-/// Leaf shapes are driven by per-branch `leaf_group` indices set during build
-/// steps — there is no longer a single global leaf setting.  Multiple leaf
-/// groups can coexist (e.g. conifer whorls on lower branches, spheres on the
-/// canopy).  ConiferWhorl groups are emitted generatively; Sphere groups are
-/// tested per-cell in the bounding-box scan.
-pub fn voxelize(
-    generator: &mut ShrubberyGenerator,
-    settings: &ShrubberySettings,
-) -> Vec<(IVec3, VoxelId)> {
-    let (mut min_bounds, mut max_bounds) = generator.get_bounds();
-    let padding = leaf_padding(generator);
+type BranchMap = ahash::HashMap<IVec3, (f32, VoxelId)>;
+type VoxelMap = ahash::HashMap<IVec3, VoxelId>;
+
+pub fn voxelize(shrubbery: &mut ShrubberyGenerator) -> VoxelMap {
+    let (mut min_bounds, mut max_bounds) = shrubbery.get_bounds();
+    let padding = leaf_padding(shrubbery);
     min_bounds -= IVec3::splat(padding);
     max_bounds += IVec3::splat(padding);
 
-    let mut voxels = Vec::with_capacity(128);
+    let mut voxels = BranchMap::default();
+    process_branches(shrubbery, &mut voxels);
+    let mut voxel_map: VoxelMap = voxels
+        .into_iter()
+        .map(|(pos, (_dist, voxel_id))| (pos, voxel_id))
+        .collect();
+    process_shapes(shrubbery, &mut voxel_map);
 
-    // Pass 1: emit all ConiferWhorl groups directly (generative, no bbox scan).
-    let whorl_group_indices: Vec<usize> = generator
-        .leaf_groups
+    voxel_map
+}
+
+fn process_sphere_leaves(
+    generator: &ShrubberyGenerator,
+    out: &mut VoxelMap,
+    leaf_index: usize,
+    leaf_decoration: &LeafDecoration,
+    radius: &ValueOrRangeF32,
+) {
+    for (branch_index, branch) in generator
+        .branches
         .iter()
         .enumerate()
-        .filter(|(_, (shape, _))| matches!(shape, LeafShape::ConiferWhorl(_)))
-        .map(|(i, _)| i)
-        .collect();
+        .filter(|(_, b)| b.leaf_group == Some(leaf_index))
+    {
+        let mut rng = ChaCha8Rng::seed_from_u64(branch_index as u64);
+        let r = radius.get(&mut rng);
+        let ri = r.ceil() as i32 + 1;
 
-    for group_idx in whorl_group_indices {
-        // Clone shape/decoration to avoid holding generator borrow.
-        let (shape, decoration) = generator.leaf_groups[group_idx].clone();
-        let LeafShape::ConiferWhorl(whorl) = &shape else {
-            continue;
-        };
-        voxelize_conifer_whorls(generator, group_idx, whorl, &decoration, &mut voxels);
-    }
-
-    // Pass 2: bark and Sphere leaves via bounding-box scan.
-    for x in min_bounds.x..max_bounds.x {
-        for y in min_bounds.y..max_bounds.y {
-            for z in min_bounds.z..max_bounds.z {
-                let pos = ivec3(x, y, z);
-                process_voxel(pos, generator, settings, &mut voxels);
+        for dx in -ri..=ri {
+            for dy in -ri..=ri {
+                for dz in -ri..=ri {
+                    let offset = vec3(dx as f32, dy as f32, dz as f32);
+                    if offset.length_squared() > (r + EPSILON).powi(2) {
+                        continue;
+                    } // no sqrt
+                    let world_f32 = branch.pos + offset;
+                    let world_i32 = world_f32.floor().as_ivec3();
+                    if out.contains_key(&world_i32) {
+                        continue;
+                    } // preserves "first branch wins"
+                    out.insert(
+                        world_i32,
+                        leaf_decoration.get_voxel_id(&mut rng, world_f32, branch.pos, r),
+                    );
+                }
             }
         }
     }
-
-    voxels
 }
 
-fn process_voxel(
-    pos: IVec3,
-    shrubbery: &mut ShrubberyGenerator,
-    settings: &ShrubberySettings,
-    voxels: &mut Vec<(IVec3, VoxelId)>,
-) {
-    let sample_pos = vec3(pos.x as f32 + 0.5, pos.y as f32 + 0.5, pos.z as f32 + 0.5);
-
-    // Test Sphere leaf groups: for each group that is Sphere-shaped, test this
-    // cell against all branches that reference that group.
-    let sphere_group_indices: Vec<usize> = shrubbery
-        .leaf_groups
-        .iter()
-        .enumerate()
-        .filter(|(_, (shape, _))| matches!(shape, LeafShape::Sphere { .. }))
-        .map(|(i, _)| i)
-        .collect();
-
-    for group_index in sphere_group_indices {
-        if generate_sphere_leaf(sample_pos, pos, shrubbery, group_index, &mut *voxels) {
-            return; // cell claimed by a leaf — don't also render bark here
+fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap) {
+    for (leaf_index, (leaf_shape, leaf_decoration)) in shrubbery.leaf_groups.iter().enumerate() {
+        match leaf_shape {
+            LeafShape::Sphere { radius } => {
+                process_sphere_leaves(shrubbery, &mut voxels, leaf_index, &leaf_decoration, radius);
+            }
+            LeafShape::ConiferWhorl(conifer_whorl_shape) => {
+                voxelize_conifer_whorls(
+                    shrubbery,
+                    leaf_index,
+                    conifer_whorl_shape,
+                    leaf_decoration,
+                    &mut voxels,
+                );
+            }
         }
     }
+}
 
-    // Bark
-    let (dist_to_branch, closest_branch_index) = shrubbery.distance_to_branch(sample_pos);
-    let closest_branch = &shrubbery.branches[closest_branch_index];
-    let mut size = closest_branch.thickness;
-    // let mut size = match &settings.branch_size_setting {
-    //     BranchSizeSetting::Value { size: distance } => *distance,
-    //     BranchSizeSetting::Generation { sizes: distances } => {
-    //         let closest_branch = &shrubbery.branches[closest_branch_index];
-    //         let index = closest_branch.generation.min(distances.len() as i32 - 1);
-    //         *distances.get(index as usize).unwrap_or(&f32::MIN)
-    //     }
-    // };
-    if let Some(increaser) = &settings.branch_root_size_increaser {
-        let h_m = 1.0 - (sample_pos.y / increaser.height.max(0.001)).min(1.0);
-        size += h_m * increaser.additional_size;
-    }
-    if dist_to_branch < size + EPSILON {
-        // overwrite
-
-        let mut bark_id = match &settings.bark_decorator {
-            BarkDecorator::Single(voxel_mapping) => voxel_mapping.id,
+fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap) {
+    for (branch_index, branch) in shrubbery.branches.iter().enumerate() {
+        let Some(parent_index) = branch.parent_index else {
+            continue;
         };
+        let start_pos = shrubbery.branches[parent_index].pos;
+        let end_pos = branch.pos;
 
-        if let Some(group_id) = closest_branch.decoration_group {
-            let decoration = shrubbery.branch_decorations.get(group_id).unwrap();
+        // find branch bounds
+        let min = start_pos.min(end_pos) - Vec3::splat(branch.thickness + 1.0);
+        let max = start_pos.max(end_pos) + Vec3::splat(branch.thickness + 1.0);
+        let (min, max) = (min.floor().as_ivec3(), max.ceil().as_ivec3());
 
-            let mut branch_rng =
-                rand_chacha::ChaCha8Rng::seed_from_u64(closest_branch_index as u64);
+        for x in min.x..=max.x {
+            for y in min.y..=max.y {
+                for z in min.z..=max.z {
+                    let pos = ivec3(x, y, z);
 
-            let mut generation_percent =
-                closest_branch.iteration as f32 / closest_branch.iteration_total as f32;
-            generation_percent = generation_percent.clamp(0.0, 1.0);
-            bark_id =
-                decoration.get_voxel_id_percent(&mut branch_rng, sample_pos, generation_percent);
+                    let sample = vec3(x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5);
+                    let dist = point_segment_distance_squared(sample, start_pos, end_pos);
+                    if dist >= branch.thickness + EPSILON {
+                        continue;
+                    }
+                    let mut voxel_id = VoxelId::default();
+                    if let Some(group_id) = branch.decoration_group {
+                        let decoration = shrubbery.branch_decorations.get(group_id).unwrap();
+
+                        let mut branch_rng =
+                            rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64);
+
+                        let mut generation_percent =
+                            branch.iteration as f32 / branch.iteration_total as f32;
+                        generation_percent = generation_percent.clamp(0.0, 1.0);
+                        voxel_id = decoration.get_voxel_id_percent(
+                            &mut branch_rng,
+                            sample,
+                            generation_percent,
+                        );
+                    }
+
+                    voxels
+                        .entry(pos)
+                        .and_modify(|(best, id)| {
+                            if dist < *best {
+                                *best = dist;
+                                *id = voxel_id;
+                            }
+                        })
+                        .or_insert((dist, voxel_id));
+                }
+            }
         }
-        voxels.push((
-            ivec3(
-                sample_pos.x as i32,
-                sample_pos.y as i32,
-                sample_pos.z as i32,
-            ),
-            bark_id,
-        ));
     }
+}
+
+fn point_segment_distance_squared(point: Vec3, start: Vec3, end: Vec3) -> f32 {
+    let seg = end - start;
+    let seg_len_sq = seg.length_squared();
+
+    if seg_len_sq < EPSILON {
+        return point.distance_squared(start);
+    }
+
+    let t = ((point - start).dot(seg) / seg_len_sq).clamp(0.0, 1.0);
+    let closest = start + seg * t;
+
+    point.distance_squared(closest)
 }
 
 /// Emit conifer-whorl voxels directly from each branch assigned to this leaf group.
 fn voxelize_conifer_whorls(
-    generator: &mut ShrubberyGenerator,
+    generator: &ShrubberyGenerator,
     group_idx: usize,
     whorl: &ConiferWhorlShape,
     decoration: &LeafDecoration,
-    voxels: &mut Vec<(IVec3, VoxelId)>,
+    voxels: &mut VoxelMap,
 ) {
     struct WhorlInfo {
         branch_index: usize,
@@ -593,8 +611,8 @@ fn voxelize_conifer_whorls(
         let search_radius = arm_length.ceil() as i32;
 
         for r_x in -search_radius..=search_radius {
+            let fx = r_x as f32;
             for r_z in -search_radius..=search_radius {
-                let fx = r_x as f32;
                 let fz = r_z as f32;
                 let offset_h = Vec3::new(fx, 0.0, fz);
 
@@ -660,163 +678,9 @@ fn voxelize_conifer_whorls(
                     let voxel_id =
                         decoration.get_voxel_id(&mut branch_rng, sample_pos, info.pos, arm_length);
 
-                    voxels.push((grid_pos, voxel_id));
+                    voxels.insert(grid_pos, voxel_id);
                 }
             }
         }
     }
-}
-
-/// Resolve the decoration voxel id for a single whorl voxel.
-///
-/// `normalized_dist` is 0.0 at the branch centre, 1.0 at the arm tip.
-/// `sample_pos` / `branch_pos` / `arm_length` are forwarded to Gradient so it
-/// can re-use the existing axis/modulation logic.
-// fn resolve_whorl_decoration(
-//     decoration: &LeafDecoration,
-//     rng: &mut ChaCha8Rng,
-//     normalized_dist: f32,
-//     sample_pos: Vec3,
-//     branch_pos: Vec3,
-//     arm_length: f32,
-// ) -> VoxelId {
-//     match decoration {
-//         LeafDecoration::Single(m) => m.id,
-//         LeafDecoration::Randomized(items) => items
-//             .choose_weighted(rng, |i| i.weight)
-//             .map(|v| v.voxel_mapping.id)
-//             .unwrap_or_default(),
-//         LeafDecoration::Gradient(g) => {
-//             // Re-use the same axis/modulation path as the Sphere gradient so
-//             // that existing RON configs work unchanged.
-//             let leaf_v = match g.axis {
-//                 Axis::X => branch_pos.x,
-//                 Axis::Y => branch_pos.y,
-//                 Axis::Z => branch_pos.z,
-//             };
-//             let pos_v = match g.axis {
-//                 Axis::X => sample_pos.x,
-//                 Axis::Y => sample_pos.y,
-//                 Axis::Z => sample_pos.z,
-//             };
-//             let bounds = (leaf_v - arm_length, leaf_v + arm_length);
-//             let mut percent = percent_in_range(pos_v, bounds.0, bounds.1);
-
-//             if let Some(modulation) = &g.modulation {
-//                 percent += match modulation {
-//                     LeafGradientModulation::Random { percent_offset } => {
-//                         rng.random_range(-*percent_offset..*percent_offset)
-//                     }
-//                     LeafGradientModulation::Wave {
-//                         frequency,
-//                         amplitude,
-//                     } => {
-//                         let coord = (sample_pos.x + sample_pos.z) * frequency;
-//                         coord.sin() * amplitude
-//                     }
-//                 };
-//             }
-//             percent = percent.clamp(0.0, 1.0);
-
-//             let mut selected = VoxelId::default();
-//             for step in g.steps.iter() {
-//                 if percent > step.percent {
-//                     continue;
-//                 }
-//                 selected = step.voxel_mapping.id;
-//                 break;
-//             }
-//             selected
-//         }
-//     }
-// }
-
-/// Test a single voxel cell against all branches in the given sphere leaf group.
-/// Returns true and emits the voxel if any branch's sphere covers this cell.
-fn generate_sphere_leaf(
-    pos: Vec3,
-    grid_pos: IVec3,
-    mut shrubbery: &mut ShrubberyGenerator,
-    group_idx: usize,
-    // r: f32,
-    // decoration: &LeafDecoration,
-    voxels: &mut Vec<(IVec3, VoxelId)>,
-) -> bool {
-    let ShrubberyGenerator {
-        branches,
-        rng,
-        leaf_groups,
-        ..
-    } = &mut shrubbery;
-
-    let (shape, decoration) = &leaf_groups[group_idx];
-    let LeafShape::Sphere { radius } = &shape else {
-        return false;
-    };
-
-    for (branch_index, branch) in branches
-        .iter()
-        .filter(|b| b.leaf_group == Some(group_idx))
-        .enumerate()
-    {
-        let mut branch_rng = rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64);
-        let r = radius.get(&mut branch_rng);
-
-        let leaf_pos = branch.pos;
-        if !is_inside_sphere(pos, leaf_pos, r) {
-            continue;
-        }
-        let voxel_id = match decoration {
-            LeafDecoration::Single(voxel_mapping) => voxel_mapping.id,
-            LeafDecoration::Randomized(items) => items
-                .choose_weighted(rng, |i| i.weight)
-                .map(|v| v.voxel_mapping.id)
-                .unwrap_or_default(),
-            LeafDecoration::Gradient(gradient_settings) => {
-                let leaf_v = match gradient_settings.axis {
-                    Axis::X => leaf_pos.x,
-                    Axis::Y => leaf_pos.y,
-                    Axis::Z => leaf_pos.z,
-                };
-                let pos_v = match gradient_settings.axis {
-                    Axis::X => pos.x,
-                    Axis::Y => pos.y,
-                    Axis::Z => pos.z,
-                };
-                let bounds = (leaf_v - r, leaf_v + r);
-                let mut percent = percent_in_range(pos_v, bounds.0, bounds.1);
-                if let Some(modulation) = &gradient_settings.modulation {
-                    percent += match modulation {
-                        LeafGradientModulation::Random { percent_offset } => {
-                            rng.random_range(-*percent_offset..*percent_offset)
-                        }
-                        LeafGradientModulation::Wave {
-                            frequency,
-                            amplitude,
-                        } => {
-                            let coord = (pos.x + pos.z) * *frequency;
-                            coord.sin() * amplitude
-                        }
-                    };
-                }
-                percent = percent.clamp(0.0, 1.0);
-                let mut selected = VoxelId::default();
-                for step in gradient_settings.steps.iter() {
-                    if percent > step.percent {
-                        continue;
-                    }
-                    selected = step.voxel_mapping.id;
-                    break;
-                }
-                selected
-            }
-        };
-        voxels.push((grid_pos, voxel_id));
-        return true;
-    }
-    false
-}
-
-fn is_inside_sphere(pos: Vec3, sphere_pos: Vec3, radius: f32) -> bool {
-    pos.distance(sphere_pos) <= radius + EPSILON
 }
