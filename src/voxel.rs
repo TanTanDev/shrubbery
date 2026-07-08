@@ -493,7 +493,7 @@ fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap) 
 
                     let sample = vec3(x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5);
                     let dist = point_segment_distance_squared(sample, start_pos, end_pos);
-                    if dist >= branch.thickness + EPSILON {
+                    if dist >= (branch.thickness + EPSILON).powi(2) {
                         continue;
                     }
                     let mut voxel_id = VoxelId::default();
