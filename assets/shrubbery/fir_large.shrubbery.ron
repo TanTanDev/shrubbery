@@ -3,6 +3,7 @@
 (
     build_steps: [
         SpawnRootBranch((
+            assign_id: AssignId(0),
             count: 1,
             pos: (0.0, 0.0, 0.0),
             branch_len: Value(4.0),

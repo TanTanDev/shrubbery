@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::shrubbery::TrunkGrowthDirection;
+use crate::shrubbery::BranchGrowthDirection;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -38,20 +38,26 @@ impl Branch {
     pub fn next(
         &self,
         index: usize,
-        branch_len: f32,
+        mut branch_len: f32,
         id: u32,
-        trunk_growth_dir: &TrunkGrowthDirection,
+        trunk_growth_dir: &BranchGrowthDirection,
         thickness: f32,
         iteration: u32,
         iteration_total: u32,
     ) -> Self {
         let dir = match trunk_growth_dir {
-            TrunkGrowthDirection::Normal => self.dir,
-            TrunkGrowthDirection::GravityLean { strength } => {
+            BranchGrowthDirection::Normal => self.dir,
+            BranchGrowthDirection::GravityLean { strength } => {
                 (self.dir + Vec3::NEG_Y * *strength).normalize()
                 // self.dir * branch_len
             }
-            TrunkGrowthDirection::Target(dir) => *dir,
+            BranchGrowthDirection::Target(dir) => *dir,
+            BranchGrowthDirection::WorldPos(world_pos) => {
+                let to_world = world_pos - self.pos;
+                branch_len = to_world.length();
+
+                to_world.normalize()
+            }
         };
 
         Self {

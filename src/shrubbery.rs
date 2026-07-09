@@ -138,7 +138,7 @@ pub struct GrowDirection {
     #[serde(default)]
     pub chance: StepChance,
     pub times: ValueOrRangeU32,
-    pub trunk_growth_direction: TrunkGrowthDirection,
+    pub trunk_growth_direction: BranchGrowthDirection,
     pub branch_len: ValueOrRangeF32,
     pub branch_thickness: BranchThickness,
     pub decoration: LeafDecoration,
@@ -202,10 +202,11 @@ pub struct GrowToAttractors {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum TrunkGrowthDirection {
+pub enum BranchGrowthDirection {
     /// grow from parent normal
     Normal,
     Target(Vec3),
+    WorldPos(Vec3),
     /// grow from parent normal, but apply gravity
     GravityLean {
         strength: f32,
@@ -248,6 +249,8 @@ impl InitialDir {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnRootBranch {
+    #[serde(default)]
+    assign_id: AssignBranchId,
     /// how many initial trunks to spawn
     count: usize,
     branch_len: ValueOrRangeF32,
@@ -262,6 +265,7 @@ impl Default for SpawnRootBranch {
             initial_dir: InitialDir::Value(Vec3::Y),
             branch_len: ValueOrRangeF32::Value(2.0),
             pos: Vec3::ZERO,
+            assign_id: AssignBranchId::default(),
         }
     }
 }
@@ -742,7 +746,7 @@ impl ShrubberyGenerator {
                     branch_index,
                     grow_radial.branch_len.get(&mut self.rng),
                     id,
-                    &TrunkGrowthDirection::Target(dir),
+                    &BranchGrowthDirection::Target(dir),
                     thickness,
                     i,
                     count,
@@ -855,7 +859,7 @@ impl ShrubberyGenerator {
                     branch_index,
                     grow_to_attractors.branch_len.get(&mut self.rng),
                     id,
-                    &TrunkGrowthDirection::Normal,
+                    &BranchGrowthDirection::Normal,
                     thickness,
                     iteration_value,
                     iteration_max,
@@ -961,8 +965,9 @@ impl ShrubberyGenerator {
                 thickness: 1.0,
                 decoration_group: None,
                 iteration_total: spawn_root_branch.count as u32,
-                id: 0,
+                id: spawn_root_branch.assign_id.get(self.last_known_id),
             };
+            self.last_known_id = root.id;
             self.branches.push(root);
         }
     }

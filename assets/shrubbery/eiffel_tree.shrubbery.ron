@@ -1,0 +1,132 @@
+// Tree 5: palm tree.
+// Strong gravity lean, thin tall trunk, crown fans out, coconuts + fronds.
+(
+    build_steps: [
+        SpawnRootBranch((
+            assign_id: AssignId(0),
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (-10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            assign_id: AssignId(0),
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            assign_id: AssignId(0),
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (-10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            assign_id: AssignId(0),
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        // Strong lean for visible palm curve
+        GrowDirection((
+            times: Value(7),
+            trunk_growth_direction: GravityLean(strength: 0.2),
+            branch_len: Range(7.5, 7.5),
+            // branch_thickness: ValueOrRange(Value(2.0)),
+            branch_thickness: IterationScale (
+                min: Value(3.0),
+                max: Value(1.5),
+            ),
+            decoration: Single(VoxelMapping(name: "bark_dark")),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
+            assign_id: AssignId(0),
+        )),
+        GrowDirection((
+            times: Value(1),
+            trunk_growth_direction: WorldPos(Vec3(0,40,0)),
+            branch_len: Range(7.5, 7.5),
+            // branch_thickness: ValueOrRange(Value(2.0)),
+            branch_thickness: IterationScale (
+                min: Value(3.0),
+                max: Value(1.5),
+            ),
+            decoration: Single(VoxelMapping(name: "bark_dark")),
+            filter: BranchFilter(
+                iteration_filter: Last,
+            ),
+            assign_id: AssignId(0),
+        )),
+        SpawnRootBranch((
+            assign_id: AssignId(1),
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (0.0, 40.0, 0.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            assign_id: AssignId(1),
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (0.0, 40.0, 0.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        GrowDirection((
+            times: Value(1),
+            trunk_growth_direction: Target(Vec3(0,-1,0)),
+            branch_len: Value(9.0),
+            branch_thickness: ValueOrRange(Value(1.0)),
+            decoration: Single(VoxelMapping(name: "bark_dark")),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
+            assign_id: AssignId(1),
+        )),
+        SpawnLeaves((
+            shape: StarLeaf((
+                arm_length: Value(9.0),
+                arm_width: 3.5,
+                thickness: 2,
+                branch_sharpness: 0.6,
+                droop: 0.9,
+                tip_lift: 0.0,
+            )),
+            filter: BranchFilter(
+                ignore_root: false,
+                id_filter: Target(1),
+                iteration_filter: All,
+                // iteration_filter: Last,
+            ),
+            decoration: Gradient((
+                modulation: Some(Random(percent_offset: 0.08)),
+                steps: [
+                    LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                ],
+            )),
+        )),
+    ],
+)
