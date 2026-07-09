@@ -209,8 +209,4 @@
         //     )),
         // )),
     ],
-    bark_decorator: Single(VoxelMapping(name: "bark")),
-    // Thin trunk tapering to nothing at crown
-    branch_size_setting: Generation(sizes: [1.8, 1.2, 0.8]),
-    branch_root_size_increaser: Some((height: 5.0, additional_size: 1.2)),
 )

@@ -292,23 +292,6 @@ impl Default for BranchSizeSetting {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct BranchRootSizeIncreaser {
-    /// height where to not add additional size
-    pub height: f32,
-    /// how much to maximally add to the root size
-    pub additional_size: f32,
-}
-
-/// Bark and branch geometry settings — leaf settings are now in build steps.
-#[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VoxelizeSettings {
-    pub branch_size_setting: BranchSizeSetting,
-    pub branch_root_size_increaser: Option<BranchRootSizeIncreaser>,
-}
-
 pub fn drop_id(voxels: &mut Vec<(IVec3, VoxelId)>, voxel_id: VoxelId, procentage: f32, seed: u64) {
     let mut branch_indices = voxels
         .iter()
@@ -420,7 +403,7 @@ fn voxelize_star_leaves(
         .filter(|b| b.leaf_group == Some(group_idx))
         .enumerate()
     {
-        let mut rng = ChaCha8Rng::seed_from_u64(layer_index as u64 ^ 0x5eaf1eaf);
+        let mut rng = ChaCha8Rng::seed_from_u64(layer_index as u64 + tree_seed);
         let arm_length = star.arm_length.get(&mut rng);
 
         emit_star_arms(
@@ -438,7 +421,7 @@ fn voxelize_star_leaves(
             },
             decoration,
             voxels,
-            tree_seed,
+            &mut rng,
         );
     }
 }
@@ -645,7 +628,7 @@ fn voxelize_conifer_whorls(
             },
             decoration,
             voxels,
-            tree_seed,
+            &mut seed_rng,
         );
     }
 }
@@ -669,13 +652,13 @@ fn emit_star_arms(
     params: &ArmShapeParams,
     decoration: &LeafDecoration,
     voxels: &mut VoxelMap,
-    tree_seed: u64,
+    mut rng: &mut ChaCha8Rng,
 ) {
     if params.arm_length < 0.5 {
         return;
     }
 
-    let mut rng = ChaCha8Rng::seed_from_u64(params.layer_index as u64 + tree_seed + 99);
+    // let mut rng = ChaCha8Rng::seed_from_u64(params.layer_index as u64 + tree_seed + 99);
 
     let branch_dir = params.dir.normalize_or(Vec3::Y);
     let forward = Vec3::new(branch_dir.z, 0.0, -branch_dir.x).normalize_or(Vec3::X);

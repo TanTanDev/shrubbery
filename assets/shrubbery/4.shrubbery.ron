@@ -154,8 +154,4 @@
         //     )),
         // )),
     ],
-    bark_decorator: Single(VoxelMapping(name: "bark")),
-    branch_size_setting: Generation(sizes: [1.0, 1.0]),
-    branch_root_size_increaser: None,
-    // branch_root_size_increaser: Some((height: 12.0, additional_size: 2.5)),
 )

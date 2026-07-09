@@ -5,10 +5,7 @@ use crate::{
     branch::{Branch, BranchFilter},
     math_utils::{dist_to_line, rotate_point},
     shape::Shape,
-    voxel::{
-        BranchRootSizeIncreaser, BranchSizeSetting, LeafDecoration, LeafShape, VoxelDefinitions,
-        VoxelMapping,
-    },
+    voxel::{LeafDecoration, LeafShape, VoxelDefinitions, VoxelMapping},
 };
 
 use glam::{IVec3, Quat, Vec2, Vec3, ivec3, vec2, vec3};
@@ -109,12 +106,6 @@ pub struct ShrubberySettings {
     pub trunk_settings: TrunkSettings,
     /// steps, how to grow/shape/modify the tree
     pub build_steps: Vec<ShrubberyStep>,
-    /// what voxels to use for bark
-    pub bark_decorator: BarkDecorator,
-    /// branch voxel thickness (global, can vary by generation)
-    pub branch_size_setting: BranchSizeSetting,
-    /// optional extra width added near the root
-    pub branch_root_size_increaser: Option<BranchRootSizeIncreaser>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -337,11 +328,6 @@ impl ShrubberySettings {
     }
 
     pub fn resolve_voxel_definitions(&mut self, voxel_definitions: &VoxelDefinitions) {
-        match &mut self.bark_decorator {
-            BarkDecorator::Single(voxel_mapping) => {
-                voxel_mapping.resolve(voxel_definitions);
-            }
-        }
         for step in self.build_steps.iter_mut() {
             match step {
                 ShrubberyStep::GrowDirection(grow_direction) => {
@@ -379,9 +365,6 @@ impl Default for ShrubberySettings {
                 iteration_calculation: IterationCalculation::default(),
                 assign_id: AssignBranchId::AutoIncrement,
             })],
-            bark_decorator: BarkDecorator::Single(VoxelMapping::default()),
-            branch_size_setting: BranchSizeSetting::default(),
-            branch_root_size_increaser: None,
             trunk_settings: TrunkSettings::default(),
         }
     }
