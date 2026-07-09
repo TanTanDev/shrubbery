@@ -872,7 +872,7 @@ impl ShrubberyGenerator {
                 to_add.push(new_branch);
                 branch.reset();
             }
-            let branch_len = usize::checked_sub(self.branches.len(), 1).expect("can this happend");
+            let branch_len = self.branches.len();
             self.branches.extend(to_add);
             // the active branches have (possibly) grown, no need to recheck them
             active_branches.clear();

@@ -141,6 +141,7 @@ pub enum IterationFilter {
     #[default]
     All,
     Last,
+    Target(u32),
     Greater(u32),
     Lower(u32),
 }
@@ -152,6 +153,7 @@ impl IterationFilter {
             IterationFilter::Last => iteration == u32::checked_sub(max, 1).unwrap_or(u32::MAX),
             IterationFilter::Greater(higher) => iteration > *higher,
             IterationFilter::Lower(lower) => iteration < *lower,
+            IterationFilter::Target(target) => *target == iteration,
         }
     }
 }
