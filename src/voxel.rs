@@ -37,6 +37,7 @@ impl VoxelMapping {
     }
 }
 
+#[derive(Default)]
 #[cfg_attr(feature = "bevy", derive(Resource))]
 pub struct VoxelDefinitions(pub HashMap<String, VoxelId>);
 
