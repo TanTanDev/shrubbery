@@ -59,6 +59,9 @@ impl ValueOrRangeF32 {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowRadial {
+    /// chance we'll run this step
+    #[serde(default)]
+    pub chance: StepChance,
     /// how many branches to spawn
     pub count: ValueOrRangeU32,
     /// how much to angle
@@ -86,7 +89,8 @@ pub enum ShrubberyStep {
     /// grow branches using space-colonization toward existing attractors
     GrowToAttractors(GrowToAttractors),
     /// Spawn attractors, for space-colonization at a fixed world position
-    SpawnAttractor(SpawnAttractors),
+    /// todo: implement
+    SpawnAttractors(SpawnAttractors),
     /// Spawn attractors,for space-colonization: placed relative to each current tip branch
     SpawnAttractorOnBranches(SpawnAttractorsOnBranches),
     /// Remove all existing attractors
@@ -130,6 +134,9 @@ impl AssignBranchId {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowDirection {
+    /// chance we'll run this step
+    #[serde(default)]
+    pub chance: StepChance,
     pub times: ValueOrRangeU32,
     pub trunk_growth_direction: TrunkGrowthDirection,
     pub branch_len: ValueOrRangeF32,
@@ -174,6 +181,9 @@ impl BranchThickness {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowToAttractors {
+    /// chance we'll run this step
+    #[serde(default)]
+    pub chance: StepChance,
     pub times: ValueOrRangeU32,
     #[serde(default)]
     pub iteration_calculation: IterationCalculation,
@@ -259,12 +269,34 @@ impl Default for TrunkSettings {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnAttractors {
+    /// chance we'll run this step
+    #[serde(default)]
+    pub chance: StepChance,
     pub pos: Vec3,
     pub shape: Shape,
     pub attractor_spacing: AttractorSpacing,
 }
 
-impl SpawnAttractors {}
+/// the chances that a `ShrubberyStep` will execute
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum StepChance {
+    #[default]
+    Always,
+    Chance(f32),
+}
+
+impl StepChance {
+    fn should_run(&self, rng: &mut ChaCha8Rng) -> bool {
+        match self {
+            StepChance::Always => true,
+            StepChance::Chance(chance) => {
+                let percent = chance / 100.0;
+                rng.random_bool(percent as f64)
+            }
+        }
+    }
+}
 
 /// Assign a leaf decoration to a set of branches at this point in the build.
 ///
@@ -274,8 +306,9 @@ impl SpawnAttractors {}
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnLeavesStep {
-    /// Which branches to assign leaves to.
-    // pub selector: BranchSelector,
+    /// chance we'll run this step
+    #[serde(default)]
+    pub chance: StepChance,
     /// The voxel shape to place at each qualifying branch tip.
     pub shape: LeafShape,
     /// How to colour the leaf voxels.
@@ -308,8 +341,9 @@ pub enum BranchOffsetDir {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnAttractorsOnBranches {
-    /// Which branches act as origins for the spawned shapes.
-    // pub selector: BranchSelector,
+    /// chance we'll run this step
+    #[serde(default)]
+    pub chance: StepChance,
     /// How far along `offset_dir` from the branch tip to place the shape centre.
     pub offset_distance: f32,
     /// Direction to offset from the branch tip.
@@ -343,7 +377,7 @@ impl ShrubberySettings {
                     grow_radial.decoration.resolve(voxel_definitions);
                 }
                 // nothing to resolve
-                ShrubberyStep::SpawnAttractor(_)
+                ShrubberyStep::SpawnAttractors(_)
                 | ShrubberyStep::SpawnAttractorOnBranches(_)
                 | ShrubberyStep::ClearAttractors => (),
             }
@@ -364,6 +398,7 @@ impl Default for ShrubberySettings {
                 filter: BranchFilter::default(),
                 iteration_calculation: IterationCalculation::default(),
                 assign_id: AssignBranchId::AutoIncrement,
+                chance: StepChance::default(),
             })],
             trunk_settings: TrunkSettings::default(),
         }
@@ -479,7 +514,7 @@ impl ShrubberyGenerator {
             ShrubberyStep::GrowToAttractors(grow_to_attractors) => {
                 self.grow_to_attractors(grow_to_attractors);
             }
-            ShrubberyStep::SpawnAttractor(spawn_attractor) => {
+            ShrubberyStep::SpawnAttractors(spawn_attractor) => {
                 spawn_attractor.shape.generate(
                     spawn_attractor.pos,
                     &mut self.attractors,
@@ -514,6 +549,9 @@ impl ShrubberyGenerator {
     /// Spawn one attractor shape per selected branch, offset from that branch
     /// along the configured direction.
     pub fn spawn_attractors_on_branches(&mut self, s: &SpawnAttractorsOnBranches) {
+        if !s.chance.should_run(&mut self.rng) {
+            return;
+        }
         // Snapshot tip positions/dirs so we don't hold a borrow on self.branches.
         let origins: Vec<(Vec3, Vec3)> = self
             .branches
@@ -551,6 +589,9 @@ impl ShrubberyGenerator {
     /// branch.  By default only undecorated branches are touched; set
     /// `step.overwrite = true` to re-decorate already-assigned branches.
     pub fn spawn_leaves(&mut self, step: &SpawnLeavesStep) {
+        if !step.chance.should_run(&mut self.rng) {
+            return;
+        }
         let group_index = self.leaf_groups.len();
         self.leaf_groups
             .push((step.shape.clone(), step.decoration.clone()));
@@ -618,6 +659,10 @@ impl ShrubberyGenerator {
 
     /// spawn new branches based upon speficied grow direction
     pub fn grow_direction(&mut self, grow_trunk: &GrowDirection) {
+        if !grow_trunk.chance.should_run(&mut self.rng) {
+            return;
+        }
+
         let decoration_index = self.branch_decorations.len();
         self.branch_decorations.push(grow_trunk.decoration.clone());
         let grow_times = grow_trunk.times.get(&mut self.rng);
@@ -658,6 +703,9 @@ impl ShrubberyGenerator {
 
     /// spawn branches in a radial formation
     pub fn grow_radial(&mut self, grow_radial: &GrowRadial) {
+        if !grow_radial.chance.should_run(&mut self.rng) {
+            return;
+        }
         let decoration_index = self.branch_decorations.len();
         self.branch_decorations.push(grow_radial.decoration.clone());
 
@@ -717,6 +765,9 @@ impl ShrubberyGenerator {
 
     /// using space colonization algorithm, spawn new branches
     pub fn grow_to_attractors(&mut self, grow_to_attractors: &GrowToAttractors) {
+        if !grow_to_attractors.chance.should_run(&mut self.rng) {
+            return;
+        }
         let times = grow_to_attractors.times.get(&mut self.rng);
 
         let group_index = self.branch_decorations.len();
