@@ -27,7 +27,7 @@
         )),
         SpawnAttractorOnBranches((
             offset_distance: 0.0,
-            offset_dir: WorldDown,
+            offset_dir: WorldUp,
             shape: Cube((size_x: 25.0, size_y: 20.0, size_z: 25.0)),
             attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 1.0),
             filter: BranchFilter(
@@ -41,6 +41,10 @@
             leaf_attraction_dist: 6.0,
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "bark")),
+            filter: BranchFilter(
+                iteration_filter: Last,
+                id_filter: Target(1),
+            ),
         )),
         SpawnLeaves((
             selector: Tips,

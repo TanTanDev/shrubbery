@@ -15,7 +15,7 @@
         GrowDirection((
             times: Range(7,10),
             trunk_growth_direction: GravityLean(strength: 0.2),
-            branch_len: Value(5.0),
+            branch_len: Value(6.0),
             branch_thickness: ValueOrRange(Value(2.0)),
             decoration: Single(VoxelMapping(name: "bark")),
             filter: BranchFilter(
@@ -24,7 +24,7 @@
             assign_id: AssignId(0),
         )),
         GrowDirection((
-            times: Value(3),
+            times: Value(1),
             trunk_growth_direction: Normal,
             branch_len: Value(4.5),
             branch_thickness: ValueOrRange(Value(4.0)),
@@ -40,7 +40,7 @@
             spacing_jitter: 0.5,
             pitch_degrees: Value(-50.0),
             trunk_growth_direction: Normal,
-            branch_len: Range(5.0, 14.0),
+            branch_len: Range(5.0, 13.0),
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "bark")),
             filter: BranchFilter(
