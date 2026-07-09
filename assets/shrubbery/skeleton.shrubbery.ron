@@ -1,0 +1,94 @@
+// Tree 5: palm tree.
+// Strong gravity lean, thin tall trunk, crown fans out, coconuts + fronds.
+(
+    build_steps: [
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (-10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (-10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (-30.0, 0.0, 15.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (30.0, 0.0, 15.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (-25.0, 0.0, -10.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRootBranch((
+            count: 1,
+            branch_len: Value(5.0),
+            pos: (40.0, 0.0, -10.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        // Strong lean for visible palm curve
+        GrowDirection((
+            times: Value(6),
+            trunk_growth_direction: GravityLean(strength: 0.2),
+            branch_len: Range(7.5, 7.5),
+            // branch_thickness: ValueOrRange(Value(2.0)),
+            branch_thickness: IterationScale (
+                min: Value(3.0),
+                max: Value(1.5),
+            ),
+            decoration: Single(VoxelMapping(name: "bark_dark")),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
+            assign_id: AssignId(0),
+        )),
+    ],
+)

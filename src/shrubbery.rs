@@ -83,6 +83,8 @@ pub struct GrowRadial {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum ShrubberyStep {
     /// Grow branches in a fixed direction (trunk building)
+    SpawnRootBranch(SpawnRootBranch),
+    /// Grow branches in a fixed direction (trunk building)
     GrowDirection(GrowDirection),
     /// Grow branches in a special radial way
     GrowRadial(GrowRadial),
@@ -106,8 +108,6 @@ pub enum ShrubberyStep {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ShrubberySettings {
-    /// how the initial branches will spawn
-    pub trunk_settings: TrunkSettings,
     /// steps, how to grow/shape/modify the tree
     pub build_steps: Vec<ShrubberyStep>,
 }
@@ -247,21 +247,21 @@ impl InitialDir {
 }
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct TrunkSettings {
+pub struct SpawnRootBranch {
     /// how many initial trunks to spawn
     count: usize,
     branch_len: ValueOrRangeF32,
-    root_pos: Vec3,
+    pos: Vec3,
     initial_dir: InitialDir,
 }
 
-impl Default for TrunkSettings {
+impl Default for SpawnRootBranch {
     fn default() -> Self {
         Self {
             count: 1,
             initial_dir: InitialDir::Value(Vec3::Y),
             branch_len: ValueOrRangeF32::Value(2.0),
-            root_pos: Vec3::ZERO,
+            pos: Vec3::ZERO,
         }
     }
 }
@@ -376,10 +376,10 @@ impl ShrubberySettings {
                 ShrubberyStep::GrowRadial(grow_radial) => {
                     grow_radial.decoration.resolve(voxel_definitions);
                 }
-                // nothing to resolve
                 ShrubberyStep::SpawnAttractors(_)
                 | ShrubberyStep::SpawnAttractorOnBranches(_)
-                | ShrubberyStep::ClearAttractors => (),
+                | ShrubberyStep::ClearAttractors
+                | ShrubberyStep::SpawnRootBranch(_) => (),
             }
         }
     }
@@ -400,7 +400,6 @@ impl Default for ShrubberySettings {
                 assign_id: AssignBranchId::AutoIncrement,
                 chance: StepChance::default(),
             })],
-            trunk_settings: TrunkSettings::default(),
         }
     }
 }
@@ -465,24 +464,24 @@ impl ShrubberyGenerator {
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
         let mut branches = Vec::new();
 
-        for i in 0..settings.trunk_settings.count {
-            let dir = settings.trunk_settings.initial_dir.get(&mut rng);
-            let root = Branch {
-                pos: settings.trunk_settings.root_pos,
-                parent_index: None,
-                dir,
-                attractors_count: 0,
-                original_dir: dir,
-                child_count: 0,
-                iteration: i as u32,
-                leaf_group: None,
-                thickness: 1.0,
-                decoration_group: None,
-                iteration_total: settings.trunk_settings.count as u32,
-                id: 0,
-            };
-            branches.push(root);
-        }
+        // for i in 0..settings.trunk_settings.count {
+        //     let dir = settings.trunk_settings.initial_dir.get(&mut rng);
+        //     let root = Branch {
+        //         pos: settings.trunk_settings.root_pos,
+        //         parent_index: None,
+        //         dir,
+        //         attractors_count: 0,
+        //         original_dir: dir,
+        //         child_count: 0,
+        //         iteration: i as u32,
+        //         leaf_group: None,
+        //         thickness: 1.0,
+        //         decoration_group: None,
+        //         iteration_total: settings.trunk_settings.count as u32,
+        //         id: 0,
+        //     };
+        //     branches.push(root);
+        // }
 
         Self {
             branches,
@@ -511,6 +510,9 @@ impl ShrubberyGenerator {
 
     pub fn execute_step(&mut self, step: &ShrubberyStep) {
         match step {
+            ShrubberyStep::SpawnRootBranch(spawn_root_branch) => {
+                self.spawn_root_branch(spawn_root_branch);
+            }
             ShrubberyStep::GrowToAttractors(grow_to_attractors) => {
                 self.grow_to_attractors(grow_to_attractors);
             }
@@ -942,5 +944,26 @@ impl ShrubberyGenerator {
             }
         }
         (closest, index)
+    }
+
+    fn spawn_root_branch(&mut self, spawn_root_branch: &SpawnRootBranch) {
+        for i in 0..spawn_root_branch.count {
+            let dir = spawn_root_branch.initial_dir.get(&mut self.rng);
+            let root = Branch {
+                pos: spawn_root_branch.pos,
+                parent_index: None,
+                dir,
+                attractors_count: 0,
+                original_dir: dir,
+                child_count: 0,
+                iteration: i as u32,
+                leaf_group: None,
+                thickness: 1.0,
+                decoration_group: None,
+                iteration_total: spawn_root_branch.count as u32,
+                id: 0,
+            };
+            self.branches.push(root);
+        }
     }
 }

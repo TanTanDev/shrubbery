@@ -1,16 +1,16 @@
 // Tree 2: classic upright conifer, whorls drooping down.
 // Tight narrow attractor cone → layers taper from wide base to sharp apex.
 (
-    trunk_settings: (
-        count: 1,
-        root_pos: (0.0, 0.0, 0.0),
-        branch_len: Value(4.0),
-        initial_dir: Random(
-            y_rotation_range: Range(0, 360),
-            z_rotation_max: Range(0, 2),
-        ),
-    ),
     build_steps: [
+        SpawnRootBranch((
+            count: 1,
+            pos: (0.0, 0.0, 0.0),
+            branch_len: Value(4.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Range(0, 2),
+            ),
+        )),
         GrowDirection((
             times: Value(1),
             trunk_growth_direction: GravityLean(strength: 0.6),

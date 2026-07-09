@@ -2,16 +2,16 @@
 // Trunk curves hard with gravity. Sub-canopy pulled up from tips.
 // Heavy droop whorls hang down from the sub-canopy branches.
 (
-    trunk_settings: (
-        count: 1,
-        root_pos: (0.0, 0.0, 0.0),
-        branch_len: Value(4.0),
-        initial_dir: Random(
-            y_rotation_range: Range(0, 360),
-            z_rotation_max: Range(3, 4),
-        ),
-    ),
     build_steps: [
+        SpawnRootBranch((
+            count: 1,
+            pos: (0.0, 0.0, 0.0),
+            branch_len: Value(4.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Range(3, 4),
+            ),
+        )),
         // Stronger gravity lean for a visible curve
         GrowDirection((
             times: Value(9),
