@@ -56,7 +56,7 @@ impl VoxelDefinitions {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct RandomizedVoxelEntry {
+pub struct RandomVoxelEntry {
     weight: i32,
     voxel_mapping: VoxelMapping,
 }
@@ -115,7 +115,7 @@ pub struct LeafGradientEntry {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafDecoration {
     Single(VoxelMapping),
-    Randomized(Vec<RandomizedVoxelEntry>),
+    Random(Vec<RandomVoxelEntry>),
     Gradient(LeafGradientSettings),
 }
 
@@ -123,7 +123,7 @@ impl LeafDecoration {
     pub fn resolve(&mut self, voxel_definitions: &VoxelDefinitions) {
         match self {
             LeafDecoration::Single(voxel_mapping) => voxel_mapping.resolve(voxel_definitions),
-            LeafDecoration::Randomized(items) => {
+            LeafDecoration::Random(items) => {
                 items
                     .iter_mut()
                     .for_each(|entry| entry.voxel_mapping.resolve(voxel_definitions));
@@ -147,7 +147,7 @@ impl LeafDecoration {
     ) -> VoxelId {
         match self {
             LeafDecoration::Single(m) => m.id,
-            LeafDecoration::Randomized(items) => items
+            LeafDecoration::Random(items) => items
                 .choose_weighted(rng, |i| i.weight)
                 .map(|v| v.voxel_mapping.id)
                 .unwrap_or_default(),
