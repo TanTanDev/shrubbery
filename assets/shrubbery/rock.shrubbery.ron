@@ -1,0 +1,31 @@
+// Oak tree — branching trunk, large sphere-leaf canopy.
+// SpawnLeaves runs at the end so only the final tips get spheres.
+(
+    build_steps: [
+        SpawnRootBranch((
+            assign_id: AssignId(0),
+            count: 1,
+            pos: (0.0, 0.0, 0.0),
+            branch_len: Value(5.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                // z_rotation_max: Value(90),
+                z_rotation_max: Range(0, 90),
+            ),
+        )),
+        GrowDirection((
+            times: Value(3),
+            trunk_growth_direction: Normal,
+            branch_len: Range(2.0, 6.0),
+            // branch_thickness: ValueOrRange(Value(1.0)),
+            branch_thickness: IterationScale (
+                min: Range(4.0, 10.0),
+                max: Range(3.0, 10.0),
+            ),
+            decoration: Single(VoxelMapping(name: "bark")),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
+        )),
+    ],
+)
