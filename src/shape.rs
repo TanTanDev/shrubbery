@@ -73,9 +73,9 @@ impl CubeShape {
                         (z as f32 + 0.5) * attractor_spacing,
                     );
                     let jitter = vec3(
-                        rng.random_range(-scatter_distance..scatter_distance),
-                        rng.random_range(-scatter_distance..scatter_distance),
-                        rng.random_range(-scatter_distance..scatter_distance),
+                        rng.random_range(-scatter_distance..=scatter_distance),
+                        rng.random_range(-scatter_distance..=scatter_distance),
+                        rng.random_range(-scatter_distance..=scatter_distance),
                     );
                     attractors.push(Attractor::new(
                         shape_pos + cell_pos + center_shape_offset + jitter,

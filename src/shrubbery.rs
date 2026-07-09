@@ -725,10 +725,8 @@ impl ShrubberyGenerator {
             for i in 0..count {
                 let thickness = grow_radial.branch_thickness.get(i, count, &mut self.rng);
                 let spacing = 360.0 / count as f32;
-                let jitter = self.rng.random_range(
-                    -spacing * 0.5 * grow_radial.spacing_jitter
-                        ..spacing * 0.5 * grow_radial.spacing_jitter,
-                );
+                let v = spacing * 0.5 * grow_radial.spacing_jitter;
+                let jitter = self.rng.random_range(-v..=v);
 
                 let yaw = (rotation_offset + spacing * i as f32 + jitter).to_radians();
 

@@ -167,7 +167,7 @@ impl LeafDecoration {
                 if let Some(modulation) = &gradient_settings.modulation {
                     percent += match modulation {
                         LeafGradientModulation::Random { percent_offset } => {
-                            rng.random_range(-*percent_offset..*percent_offset)
+                            rng.random_range(-*percent_offset..=*percent_offset)
                         }
                         LeafGradientModulation::Wave {
                             frequency,
@@ -612,7 +612,7 @@ fn voxelize_conifer_whorls(
         let mut seed_rng = ChaCha8Rng::seed_from_u64(info.layer_index as u64 + tree_seed);
         let length_jitter = if whorl.length_jitter_ratio > 0.0 {
             let max_j = whorl.max_branch_length * whorl.length_jitter_ratio;
-            seed_rng.random_range(-max_j..max_j)
+            seed_rng.random_range(-max_j..=max_j)
         } else {
             0.0
         };
