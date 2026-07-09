@@ -57,7 +57,6 @@
             selector: MinHeight(28.0),
             shape: Sphere(radius: Value(5.0)),
             decoration: Gradient((
-                axis: Y,
                 modulation: Some(Random(percent_offset: 0.1)),
                 steps: [
                     LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
@@ -66,8 +65,6 @@
                 ],
             )),
             filter: BranchFilter(
-                // id_filter: Target(5),
-                // id_filter: All,
                 id_filter: Last,
                 iteration_filter: All,
             ),

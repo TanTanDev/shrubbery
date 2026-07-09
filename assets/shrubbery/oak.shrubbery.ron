@@ -46,7 +46,6 @@
             selector: Tips,
             shape: Sphere(radius: Value(6.0)),
             decoration: Gradient((
-                axis: Y,
                 modulation: Some(Random(percent_offset: 0.1)),
                 steps: [
                     LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),

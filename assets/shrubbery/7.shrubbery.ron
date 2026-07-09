@@ -15,6 +15,9 @@
             branch_len: Value(4.0),
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Single(VoxelMapping(name: "bark")),
+            filter: BranchFilter(
+                ignore_root: false,
+            ),
         )),
         SpawnAttractor((
             pos: (0.0, 16.0, 0.0),
@@ -46,7 +49,6 @@
                 whorl_spacing: 1.0,
             )),
             decoration: Gradient((
-                axis: Y,
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),

@@ -31,7 +31,6 @@
                 tip_lift: 7.0,
             )),
             decoration: Gradient((
-                axis: Y,
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
@@ -63,7 +62,6 @@
                 iteration_filter: Last,
             ),
             decoration: Gradient((
-                axis: Y,
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "bark_dark")),

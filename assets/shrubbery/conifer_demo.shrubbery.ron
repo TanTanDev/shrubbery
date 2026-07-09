@@ -50,7 +50,6 @@
                 // arm_facing: Horizontal,
             )),
             decoration: Gradient((
-                axis: Y,
                 modulation: None,
                 // modulation: Some(Random(percent_offset: 0.08)),
                 steps: [

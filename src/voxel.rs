@@ -61,10 +61,11 @@ pub struct RandomizedVoxelEntry {
     voxel_mapping: VoxelMapping,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Axis {
     X,
+    #[default]
     Y,
     Z,
 }
@@ -77,11 +78,28 @@ pub enum LeafGradientModulation {
     Wave { frequency: f32, amplitude: f32 },
 }
 
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum LeafGradientSamplingMethod {
+    World { axis: Axis },
+    IterationPercent,
+}
+
+impl Default for LeafGradientSamplingMethod {
+    fn default() -> Self {
+        Self::World {
+            axis: Axis::default(),
+        }
+    }
+}
+
 /// describes how to color voxels
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LeafGradientSettings {
-    pub axis: Axis,
+    #[serde(default)]
+    pub sampling_method: LeafGradientSamplingMethod,
+    #[serde(default)]
     pub modulation: Option<LeafGradientModulation>,
     pub steps: Vec<LeafGradientEntry>,
 }
@@ -123,8 +141,9 @@ impl LeafDecoration {
         &self,
         rng: &mut ChaCha8Rng,
         sample_pos: Vec3,
-        branch_pos: Vec3,
-        arm_length: f32,
+        bounds_min: Vec3,
+        bounds_max: Vec3,
+        iteration_percent: f32,
     ) -> VoxelId {
         match self {
             LeafDecoration::Single(m) => m.id,
@@ -132,23 +151,20 @@ impl LeafDecoration {
                 .choose_weighted(rng, |i| i.weight)
                 .map(|v| v.voxel_mapping.id)
                 .unwrap_or_default(),
-            LeafDecoration::Gradient(g) => {
-                // Re-use the same axis/modulation path as the Sphere gradient so
-                // that existing RON configs work unchanged.
-                let leaf_v = match g.axis {
-                    Axis::X => branch_pos.x,
-                    Axis::Y => branch_pos.y,
-                    Axis::Z => branch_pos.z,
+            LeafDecoration::Gradient(gradient_settings) => {
+                let mut percent = match &gradient_settings.sampling_method {
+                    LeafGradientSamplingMethod::World { axis } => {
+                        let (low, high, pos_v) = match axis {
+                            Axis::X => (bounds_min.x, bounds_max.x, sample_pos.x),
+                            Axis::Y => (bounds_min.y, bounds_max.y, sample_pos.y),
+                            Axis::Z => (bounds_min.z, bounds_max.z, sample_pos.z),
+                        };
+                        percent_in_range(pos_v, low, high)
+                    }
+                    LeafGradientSamplingMethod::IterationPercent => iteration_percent,
                 };
-                let pos_v = match g.axis {
-                    Axis::X => sample_pos.x,
-                    Axis::Y => sample_pos.y,
-                    Axis::Z => sample_pos.z,
-                };
-                let bounds = (leaf_v - arm_length, leaf_v + arm_length);
-                let mut percent = percent_in_range(pos_v, bounds.0, bounds.1);
 
-                if let Some(modulation) = &g.modulation {
+                if let Some(modulation) = &gradient_settings.modulation {
                     percent += match modulation {
                         LeafGradientModulation::Random { percent_offset } => {
                             rng.random_range(-*percent_offset..*percent_offset)
@@ -165,54 +181,13 @@ impl LeafDecoration {
                 percent = percent.clamp(0.0, 1.0);
 
                 let mut selected = VoxelId::default();
-                for step in g.steps.iter() {
+                for step in gradient_settings.steps.iter() {
                     if percent > step.percent {
                         continue;
                     }
                     selected = step.voxel_mapping.id;
                     break;
                 }
-                selected
-            }
-        }
-    }
-
-    fn get_voxel_id_percent(
-        &self,
-        rng: &mut ChaCha8Rng,
-        sample_pos: Vec3,
-        mut percent: f32,
-    ) -> VoxelId {
-        match self {
-            LeafDecoration::Single(m) => m.id,
-            LeafDecoration::Randomized(items) => items
-                .choose_weighted(rng, |i| i.weight)
-                .map(|v| v.voxel_mapping.id)
-                .unwrap_or_default(),
-            LeafDecoration::Gradient(g) => {
-                if let Some(modulation) = &g.modulation {
-                    percent += match modulation {
-                        LeafGradientModulation::Random { percent_offset } => {
-                            rng.random_range(-*percent_offset..*percent_offset)
-                        }
-                        LeafGradientModulation::Wave {
-                            frequency,
-                            amplitude,
-                        } => {
-                            let coord = (sample_pos.x + sample_pos.z) * frequency;
-                            coord.sin() * amplitude
-                        }
-                    };
-                }
-                percent = percent.clamp(0.0, 1.0);
-
-                let selected = g
-                    .steps
-                    .iter()
-                    .find(|s| percent <= s.percent)
-                    .or_else(|| g.steps.last())
-                    .map(|s| s.voxel_mapping.id)
-                    .unwrap_or_default();
                 selected
             }
         }
@@ -341,7 +316,7 @@ pub fn voxelize(shrubbery: &mut ShrubberyGenerator, tree_seed: u64) -> VoxelMap 
     max_bounds += IVec3::splat(padding);
 
     let mut voxels = BranchMap::default();
-    process_branches(shrubbery, &mut voxels);
+    process_branches(shrubbery, &mut voxels, tree_seed);
     let mut voxel_map: VoxelMap = voxels
         .into_iter()
         .map(|(pos, (_dist, voxel_id))| (pos, voxel_id))
@@ -357,6 +332,7 @@ fn process_sphere_leaves(
     leaf_index: usize,
     leaf_decoration: &LeafDecoration,
     radius: &ValueOrRangeF32,
+    tree_seed: u64,
 ) {
     for (branch_index, branch) in generator
         .branches
@@ -364,9 +340,12 @@ fn process_sphere_leaves(
         .enumerate()
         .filter(|(_, b)| b.leaf_group == Some(leaf_index))
     {
-        let mut rng = ChaCha8Rng::seed_from_u64(branch_index as u64);
+        let mut rng = ChaCha8Rng::seed_from_u64(branch_index as u64 + tree_seed);
         let r = radius.get(&mut rng);
         let ri = r.ceil() as i32 + 1;
+        let iteration_percent = branch.iteration as f32 / branch.iteration_total as f32;
+        let bounds_min = branch.pos - Vec3::splat(r);
+        let bounds_max = branch.pos + Vec3::splat(r);
 
         for dx in -ri..=ri {
             for dy in -ri..=ri {
@@ -380,9 +359,16 @@ fn process_sphere_leaves(
                     if out.contains_key(&world_i32) {
                         continue;
                     } // preserves "first branch wins"
+
                     out.insert(
                         world_i32,
-                        leaf_decoration.get_voxel_id(&mut rng, world_f32, branch.pos, r),
+                        leaf_decoration.get_voxel_id(
+                            &mut rng,
+                            world_f32,
+                            bounds_min,
+                            bounds_max,
+                            iteration_percent,
+                        ),
                     );
                 }
             }
@@ -398,7 +384,7 @@ fn voxelize_star_leaves(
     voxels: &mut VoxelMap,
     tree_seed: u64,
 ) {
-    for (layer_index, b) in generator
+    for (layer_index, branch) in generator
         .branches
         .iter()
         .filter(|b| b.leaf_group == Some(group_idx))
@@ -407,10 +393,12 @@ fn voxelize_star_leaves(
         let mut rng = ChaCha8Rng::seed_from_u64(layer_index as u64 + tree_seed);
         let arm_length = star.arm_length.get(&mut rng);
 
+        let iteration_percent = branch.iteration as f32 / branch.iteration_total as f32;
+
         emit_star_arms(
             &ArmShapeParams {
-                pos: b.pos,
-                dir: b.dir,
+                pos: branch.pos,
+                dir: branch.dir,
                 layer_index: layer_index as u32,
                 arm_length,
                 arm_width: star.arm_width,
@@ -423,6 +411,7 @@ fn voxelize_star_leaves(
             decoration,
             voxels,
             &mut rng,
+            iteration_percent,
         );
     }
 }
@@ -431,7 +420,14 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap,
     for (leaf_index, (leaf_shape, leaf_decoration)) in shrubbery.leaf_groups.iter().enumerate() {
         match leaf_shape {
             LeafShape::Sphere { radius } => {
-                process_sphere_leaves(shrubbery, &mut voxels, leaf_index, &leaf_decoration, radius);
+                process_sphere_leaves(
+                    shrubbery,
+                    &mut voxels,
+                    leaf_index,
+                    &leaf_decoration,
+                    radius,
+                    tree_seed,
+                );
             }
             LeafShape::ConiferWhorl(conifer_whorl_shape) => {
                 voxelize_conifer_whorls(
@@ -457,7 +453,7 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap,
     }
 }
 
-fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap) {
+fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap, tree_seed: u64) {
     for (branch_index, branch) in shrubbery.branches.iter().enumerate() {
         let Some(parent_index) = branch.parent_index else {
             continue;
@@ -485,15 +481,17 @@ fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap) 
                         let decoration = shrubbery.branch_decorations.get(group_id).unwrap();
 
                         let mut branch_rng =
-                            rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64);
+                            rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64 + tree_seed);
 
-                        let mut generation_percent =
+                        let mut iteration_percent =
                             branch.iteration as f32 / branch.iteration_total as f32;
-                        generation_percent = generation_percent.clamp(0.0, 1.0);
-                        voxel_id = decoration.get_voxel_id_percent(
+                        iteration_percent = iteration_percent.clamp(0.0, 1.0);
+                        voxel_id = decoration.get_voxel_id(
                             &mut branch_rng,
                             sample,
-                            generation_percent,
+                            min.as_vec3(),
+                            max.as_vec3(),
+                            iteration_percent,
                         );
                     }
 
@@ -553,42 +551,48 @@ fn voxelize_conifer_whorls(
         pos: Vec3,
         dir: Vec3,
         taper_t: f32,
+        // if someone uses LeafDecorationSamplingMethod::IterationPercent
+        iteration_percent: f32,
     }
 
     let mut whorl_infos: Vec<WhorlInfo> = Vec::new();
     let mut layer_counter: u32 = 0;
     let spacing = whorl.whorl_spacing.max(0.1);
 
-    for b in generator
+    for branch in generator
         .branches
         .iter()
         .filter(|b| b.leaf_group == Some(group_idx))
     {
-        let Some(parent_index) = b.parent_index else {
+        let Some(parent_index) = branch.parent_index else {
             // No parent segment to interpolate — fall back to one whorl at
             // the branch endpoint (e.g. the root branch).
-            let taper_t = conifer_taper_t(&whorl.taper, b.pos.y, b.iteration);
+            let taper_t = conifer_taper_t(&whorl.taper, branch.pos.y, branch.iteration);
+
+            let iteration_percent = branch.iteration as f32 / branch.iteration_total as f32;
             whorl_infos.push(WhorlInfo {
                 layer_index: layer_counter,
-                pos: b.pos,
-                dir: b.dir,
+                pos: branch.pos,
+                dir: branch.dir,
                 taper_t,
+                iteration_percent,
             });
             layer_counter += 1;
             continue;
         };
 
         let parent = &generator.branches[parent_index];
-        let seg = b.pos - parent.pos; // segment vector — carries any lean/angle
+        let seg = branch.pos - parent.pos; // segment vector — carries any lean/angle
         let seg_len = seg.length();
         let steps = (seg_len / spacing).ceil().max(1.0) as u32;
 
         let taper_t_start = conifer_taper_t(&whorl.taper, parent.pos.y, parent.iteration);
-        let taper_t_end = conifer_taper_t(&whorl.taper, b.pos.y, b.iteration);
+        let taper_t_end = conifer_taper_t(&whorl.taper, branch.pos.y, branch.iteration);
 
         // t in (0,1], so each sub-layer's root center walks up the leaning
         // segment exactly, and the final step lands on b.pos (no duplicate
         // whorl at the shared joint with the next segment).
+        let iteration_percent = branch.iteration as f32 / branch.iteration_total as f32;
         for s in 0..steps {
             let t = (s + 1) as f32 / steps as f32;
             let pos = parent.pos + seg * t; // interpolated root center, tracks lean
@@ -598,6 +602,7 @@ fn voxelize_conifer_whorls(
                 pos,
                 dir: seg,
                 taper_t,
+                iteration_percent,
             });
             layer_counter += 1;
         }
@@ -630,6 +635,7 @@ fn voxelize_conifer_whorls(
             decoration,
             voxels,
             &mut seed_rng,
+            info.iteration_percent,
         );
     }
 }
@@ -654,13 +660,11 @@ fn emit_star_arms(
     decoration: &LeafDecoration,
     voxels: &mut VoxelMap,
     mut rng: &mut ChaCha8Rng,
+    iteration_percent: f32,
 ) {
     if params.arm_length < 0.5 {
         return;
     }
-
-    // let mut rng = ChaCha8Rng::seed_from_u64(params.layer_index as u64 + tree_seed + 99);
-
     let branch_dir = params.dir.normalize_or(Vec3::Y);
     let forward = Vec3::new(branch_dir.z, 0.0, -branch_dir.x).normalize_or(Vec3::X);
     let right = forward.cross(Vec3::Y).normalize_or(Vec3::Z);
@@ -679,6 +683,37 @@ fn emit_star_arms(
     let arm_width = params.arm_width;
     let search_radius = arm_length.ceil() as i32;
 
+    // --- true vertical extent, replacing the old arm_length-as-Y-bounds bug ---
+    // y_offset(d) = -d*droop + (d/arm_length)^2 * tip_lift, for d in [0, arm_length]
+    let y_at_0 = 0.0f32;
+    let y_at_tip = -arm_length * params.droop + params.tip_lift;
+    let mut y_min = y_at_0.min(y_at_tip);
+    let mut y_max = y_at_0.max(y_at_tip);
+
+    // the term is quadratic in d, so an interior extremum is possible when
+    // tip_lift and droop have opposing effects — check it explicitly.
+    if params.tip_lift.abs() > EPSILON {
+        let d_crit = params.droop * arm_length * arm_length / (2.0 * params.tip_lift);
+        if d_crit > 0.0 && d_crit < arm_length {
+            let t = d_crit / arm_length;
+            let y_crit = -d_crit * params.droop + t * t * params.tip_lift;
+            y_min = y_min.min(y_crit);
+            y_max = y_max.max(y_crit);
+        }
+    }
+
+    // thickness stacks voxels downward from y_offset
+    let thickness_extra = params.thickness.saturating_sub(1) as f32;
+    let bounds_min = vec3(
+        params.pos.x - arm_length,
+        params.pos.y + y_min - thickness_extra,
+        params.pos.z - arm_length,
+    );
+    let bounds_max = vec3(
+        params.pos.x + arm_length,
+        params.pos.y + y_max,
+        params.pos.z + arm_length,
+    );
     for r_x in -search_radius..=search_radius {
         for r_z in -search_radius..=search_radius {
             let fx = r_x as f32;
@@ -721,8 +756,13 @@ fn emit_star_arms(
                     world_z.floor() as i32,
                 );
                 let sample_pos = vec3(world_x, world_y, world_z);
-                let voxel_id =
-                    decoration.get_voxel_id(&mut rng, sample_pos, params.pos, arm_length);
+                let voxel_id = decoration.get_voxel_id(
+                    &mut rng,
+                    sample_pos,
+                    bounds_min,
+                    bounds_max,
+                    iteration_percent,
+                );
                 voxels.insert(grid_pos, voxel_id);
             }
         }

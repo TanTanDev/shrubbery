@@ -28,21 +28,12 @@
                 min: Value(5.0),
                 max: Value(1.0)
             ),
-            // decoration: Randomized(
-            // [
-            //     (weight: 7, voxel_mapping: VoxelMapping(name: "bark")),
-            //     (weight: 1, voxel_mapping: VoxelMapping(name: "leaf_dark"))
-            // ]),
             decoration: Gradient((
-                axis: Y,
-                // modulation: Some(Random(percent_offset: 0.18)),
+                sampling_method: IterationPercent,
                 modulation: None,
                 steps: [
-                    // LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    // LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-                    // LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                     LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "bark_dark")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "bark")),
+                    LeafGradientEntry(percent: 0.55, voxel_mapping: VoxelMapping(name: "bark")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "bark_bright")),
                 ],
             )),
@@ -86,7 +77,6 @@
             selector: Tips,
             shape: Sphere(radius: Range(2.0, 5.0)),
             decoration: Gradient((
-                axis: Y,
                 modulation: Some(Random(percent_offset: 0.1)),
                 steps: [
                     LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
@@ -127,31 +117,5 @@
             decoration: Single(VoxelMapping(name: "leaf_bright")),
             branch_thickness: ValueOrRange(Value(1.0)),
         )),
-        // ClearAttractors,
-        // SpawnLeaves((
-        //     selector: Tips,
-        //     shape: ConiferWhorl((
-        //         max_branch_length: 4.0,
-        //         max_branch_width: 9.0,
-        //         branch_sharpness: 0.4,
-        //         branch_thickness: 1,
-        //         // Very strong droop — leaves hang straight down
-        //         branch_droop: 0.9,
-        //         tip_lift: 0.0,
-        //         rotation_step: 2.39996,
-        //         length_jitter_ratio: 0.2,
-        //         taper: None,
-        //         arm_facing: Horizontal,
-        //     )),
-        //     decoration: Gradient((
-        //         axis: Y,
-        //         modulation: Some(Random(percent_offset: 0.1)),
-        //         steps: [
-        //             LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-        //             LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-        //             LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
-        //         ],
-        //     )),
-        // )),
     ],
 )
