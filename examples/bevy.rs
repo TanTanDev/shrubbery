@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     f32::consts::PI,
     time::{Duration, Instant},
 };
@@ -105,7 +104,7 @@ fn setup(
     .map(Into::<VoxelMaterial>::into)
     .collect();
     let voxel_materials = VoxelMaterials(voxel_materials);
-    let mut map = HashMap::<String, VoxelId>::default();
+    let mut map = ahash::HashMap::<String, VoxelId>::default();
 
     for (i, name) in voxel_materials
         .0
@@ -133,7 +132,7 @@ fn setup(
     ));
 
     commands.insert_resource(TreeAssetHandle(
-        asset_server.load("shrubbery/5.shrubbery.ron"),
+        asset_server.load("shrubbery/palm.shrubbery.ron"),
     ));
 
     commands.insert_resource(AmbientLight {

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use ahash::HashMap;
 
 #[cfg(feature = "bevy")]
 use bevy::{ecs::resource::Resource, log::warn};

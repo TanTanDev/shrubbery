@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f32::consts::PI};
+use std::f32::consts::PI;
 
 use bevy::{
     asset::LoadedFolder,
@@ -98,7 +98,7 @@ fn setup(
     .map(Into::<VoxelMaterial>::into)
     .collect();
     let voxel_materials = VoxelMaterials(voxel_materials);
-    let mut map = HashMap::<String, VoxelId>::default();
+    let mut map = ahash::HashMap::<String, VoxelId>::default();
 
     for (i, name) in voxel_materials
         .0
