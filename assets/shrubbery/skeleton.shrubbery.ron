@@ -8,7 +8,7 @@
             branch_len: Value(5.0),
             pos: (-10.0, 0.0, -20.0),
             initial_dir: Random(
-                y_rotation_range: Range(70, 110),
+                y_rotation_range: Range(60, 120),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -18,7 +18,7 @@
             branch_len: Value(5.0),
             pos: (10.0, 0.0, -20.0),
             initial_dir: Random(
-                y_rotation_range: Range(70, 110),
+                y_rotation_range: Range(60, 120),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -28,7 +28,7 @@
             branch_len: Value(5.0),
             pos: (-10.0, 0.0, 20.0),
             initial_dir: Random(
-                y_rotation_range: Range(250, 270),
+                y_rotation_range: Range(240, 280),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -38,7 +38,7 @@
             branch_len: Value(5.0),
             pos: (10.0, 0.0, 20.0),
             initial_dir: Random(
-                y_rotation_range: Range(250, 270),
+                y_rotation_range: Range(240, 280),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -48,7 +48,7 @@
             branch_len: Value(5.0),
             pos: (-30.0, 0.0, 15.0),
             initial_dir: Random(
-                y_rotation_range: Range(250, 270),
+                y_rotation_range: Range(240, 280),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -58,7 +58,7 @@
             branch_len: Value(5.0),
             pos: (30.0, 0.0, 15.0),
             initial_dir: Random(
-                y_rotation_range: Range(250, 270),
+                y_rotation_range: Range(240, 280),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -68,7 +68,7 @@
             branch_len: Value(5.0),
             pos: (-25.0, 0.0, -10.0),
             initial_dir: Random(
-                y_rotation_range: Range(70, 110),
+                y_rotation_range: Range(60, 120),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -78,7 +78,7 @@
             branch_len: Value(5.0),
             pos: (40.0, 0.0, -10.0),
             initial_dir: Random(
-                y_rotation_range: Range(70, 110),
+                y_rotation_range: Range(60, 120),
                 z_rotation_max: Range(5, 7),
             ),
         )),
@@ -86,7 +86,7 @@
         GrowDirection((
             times: Value(6),
             trunk_growth_direction: GravityLean(strength: 0.2),
-            branch_len: Range(7.5, 7.5),
+            branch_len: Range(2.0, 8.0),
             // branch_thickness: ValueOrRange(Value(2.0)),
             branch_thickness: IterationScale (
                 min: Value(3.0),
