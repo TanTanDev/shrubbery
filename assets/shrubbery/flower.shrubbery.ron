@@ -16,7 +16,7 @@
             trunk_growth_direction: Normal,
             branch_len: Value(3.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "leaf_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),
@@ -30,21 +30,21 @@
                 droop: 0.0,
                 tip_lift: 7.0,
             )),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
                     LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
-            )),
+            ))),
         )),
         GrowDirection((
             times: Value(3),
             trunk_growth_direction: GravityLean(strength: 0.6),
             branch_len: Value(5.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "leaf_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
             filter: BranchFilter(
                 ignore_shapes: false,
             ),
@@ -61,14 +61,14 @@
             filter: BranchFilter(
                 iteration_filter: Last,
             ),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "bark_dark")),
                     LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "bark")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "bark_bright")),
                 ],
-            )),
+            ))),
         )),
     ],
 )

@@ -1,7 +1,10 @@
 use ahash::HashMap;
 
 #[cfg(feature = "bevy")]
-use bevy::{ecs::resource::Resource, log::warn};
+use bevy::{
+    ecs::resource::Resource,
+    log::{error, warn},
+};
 use glam::{IVec3, Vec3, ivec3, vec3};
 use rand::{RngExt, SeedableRng, seq::IndexedRandom};
 
@@ -111,19 +114,72 @@ pub struct LeafGradientEntry {
     pub voxel_mapping: VoxelMapping,
 }
 
+/// entry for selecting a LeafDecoration
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+struct WeightedDecorationEntry {
+    weight: u32,
+    decoration: LeafDecoration,
+}
+
+/// specifies what LeafDecoration to select
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum DecorationSelector {
+    Value(LeafDecoration),
+    Random(Vec<LeafDecoration>),
+    RandomWeighted(Vec<WeightedDecorationEntry>),
+}
+
+impl DecorationSelector {
+    pub fn resolve(&mut self, voxel_definitions: &VoxelDefinitions) {
+        match self {
+            DecorationSelector::Value(leaf_decoration) => {
+                leaf_decoration.resolve(voxel_definitions)
+            }
+            DecorationSelector::Random(leaf_decorations) => leaf_decorations
+                .iter_mut()
+                .for_each(|decor| decor.resolve(voxel_definitions)),
+            DecorationSelector::RandomWeighted(weighted_decoration_entry) => {
+                weighted_decoration_entry
+                    .iter_mut()
+                    .for_each(|we| we.decoration.resolve(voxel_definitions))
+            }
+        }
+    }
+
+    fn get_leaf_decoration(&self, rng: &mut ChaCha8Rng) -> Option<&LeafDecoration> {
+        match self {
+            DecorationSelector::Value(leaf_decoration) => Some(leaf_decoration),
+            DecorationSelector::Random(leaf_decorations) => leaf_decorations.choose(rng),
+            DecorationSelector::RandomWeighted(items) => items
+                .choose_weighted(rng, |i| i.weight)
+                .map(|i| &i.decoration)
+                .ok(),
+        }
+    }
+}
+
+/// specifies how to color voxels
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafDecoration {
-    Single(VoxelMapping),
-    Random(Vec<RandomVoxelEntry>),
+    Solid(VoxelMapping),
+    RandomSolid(Vec<RandomVoxelEntry>),
     Gradient(LeafGradientSettings),
+}
+
+impl Default for LeafDecoration {
+    fn default() -> Self {
+        Self::Solid(VoxelMapping::default())
+    }
 }
 
 impl LeafDecoration {
     pub fn resolve(&mut self, voxel_definitions: &VoxelDefinitions) {
         match self {
-            LeafDecoration::Single(voxel_mapping) => voxel_mapping.resolve(voxel_definitions),
-            LeafDecoration::Random(items) => {
+            LeafDecoration::Solid(voxel_mapping) => voxel_mapping.resolve(voxel_definitions),
+            LeafDecoration::RandomSolid(items) => {
                 items
                     .iter_mut()
                     .for_each(|entry| entry.voxel_mapping.resolve(voxel_definitions));
@@ -146,8 +202,8 @@ impl LeafDecoration {
         iteration_percent: f32,
     ) -> VoxelId {
         match self {
-            LeafDecoration::Single(m) => m.id,
-            LeafDecoration::Random(items) => items
+            LeafDecoration::Solid(m) => m.id,
+            LeafDecoration::RandomSolid(items) => items
                 .choose_weighted(rng, |i| i.weight)
                 .map(|v| v.voxel_mapping.id)
                 .unwrap_or_default(),
@@ -417,7 +473,15 @@ fn voxelize_star_leaves(
 }
 
 fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap, tree_seed: u64) {
-    for (leaf_index, (leaf_shape, leaf_decoration)) in shrubbery.leaf_groups.iter().enumerate() {
+    for (leaf_index, (leaf_shape, leaf_decoration_selector)) in
+        shrubbery.leaf_groups.iter().enumerate()
+    {
+        let leaf_decoration = leaf_decoration_selector.get_leaf_decoration(&mut shrubbery.rng);
+        let Some(leaf_decoration) = leaf_decoration else {
+            error!("leaf decoration is None");
+            continue;
+        };
+
         match leaf_shape {
             LeafShape::Sphere { radius } => {
                 process_sphere_leaves(
@@ -466,6 +530,18 @@ fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap, 
         let max = start_pos.max(end_pos) + Vec3::splat(branch.thickness + 1.0);
         let (min, max) = (min.floor().as_ivec3(), max.ceil().as_ivec3());
 
+        let Some(group_id) = branch.decoration_group else {
+            panic!("no decoration group");
+        };
+        let decoration_selector = shrubbery
+            .branch_decorations
+            .get(group_id)
+            .expect("branch decor");
+
+        let Some(decoration) = decoration_selector.get_leaf_decoration(&mut shrubbery.rng) else {
+            panic!("no set leaf decoration");
+        };
+
         for x in min.x..=max.x {
             for y in min.y..=max.y {
                 for z in min.z..=max.z {
@@ -476,24 +552,19 @@ fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap, 
                     if dist >= (branch.thickness + EPSILON).powi(2) {
                         continue;
                     }
-                    let mut voxel_id = VoxelId::default();
-                    if let Some(group_id) = branch.decoration_group {
-                        let decoration = shrubbery.branch_decorations.get(group_id).unwrap();
+                    let mut branch_rng =
+                        rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64 + tree_seed);
 
-                        let mut branch_rng =
-                            rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64 + tree_seed);
-
-                        let mut iteration_percent =
-                            branch.iteration as f32 / branch.iteration_total as f32;
-                        iteration_percent = iteration_percent.clamp(0.0, 1.0);
-                        voxel_id = decoration.get_voxel_id(
-                            &mut branch_rng,
-                            sample,
-                            min.as_vec3(),
-                            max.as_vec3(),
-                            iteration_percent,
-                        );
-                    }
+                    let mut iteration_percent =
+                        branch.iteration as f32 / branch.iteration_total as f32;
+                    iteration_percent = iteration_percent.clamp(0.0, 1.0);
+                    let voxel_id = decoration.get_voxel_id(
+                        &mut branch_rng,
+                        sample,
+                        min.as_vec3(),
+                        max.as_vec3(),
+                        iteration_percent,
+                    );
 
                     voxels
                         .entry(pos)

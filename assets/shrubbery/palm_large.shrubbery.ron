@@ -18,7 +18,7 @@
             trunk_growth_direction: GravityLean(strength: 0.2),
             branch_len: Value(6.0),
             branch_thickness: ValueOrRange(Value(2.0)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),
@@ -29,7 +29,7 @@
             trunk_growth_direction: Normal,
             branch_len: Value(4.5),
             branch_thickness: ValueOrRange(Value(4.0)),
-            decoration: Single(VoxelMapping(name: "bark_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
             filter: BranchFilter(
                 iteration_filter: Last,
             ),
@@ -43,7 +43,7 @@
             trunk_growth_direction: Normal,
             branch_len: Range(5.0, 13.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 id_filter: Last,
                 iteration_filter: Last,
@@ -53,7 +53,7 @@
         // coconut balls
         SpawnLeaves((
             shape: Sphere(radius: Value(3.0)),
-            decoration: Single(VoxelMapping(name: "bark_bright")),
+            decoration: Value(Solid(VoxelMapping(name: "bark_bright"))),
             filter: BranchFilter(
                 id_filter: Target(2),
                 iteration_filter: All,
@@ -66,7 +66,7 @@
             trunk_growth_direction: Normal,
             branch_len: Value(10.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "leaf_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
             filter: BranchFilter(
                 id_filter: Target(1),
                 iteration_filter: Last,
@@ -79,7 +79,7 @@
             trunk_growth_direction: Normal,
             branch_len: Value(10.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "leaf_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
             filter: BranchFilter(
                 id_filter: Target(1),
                 iteration_filter: Last,
@@ -91,7 +91,7 @@
             branch_len: Range(4.0,12.0),
             branch_thickness: ValueOrRange(Value(2.0)),
             // decoration: Single(VoxelMapping(name: "leaf_bright")),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 sampling_method: IterationPercent,
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
@@ -99,7 +99,7 @@
                     LeafGradientEntry(percent: 0.65, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
-            )),
+            ))),
             filter: BranchFilter(
                 ignore_root: false,
             ),

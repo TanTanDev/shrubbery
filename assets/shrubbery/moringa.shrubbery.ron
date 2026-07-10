@@ -5,21 +5,21 @@
         SpawnRootBranch((
             assign_id: AssignId(0),
             count: 1,
-            pos: (0.0, 2.0, 0.0),
-            branch_len: Value(5.0),
+            pos: (0.0, 0.0, 0.0),
+            branch_len: Value(2.0),
             initial_dir: Random(
                 y_rotation_range: Range(0, 360),
-                z_rotation_max: Value(90),
+                z_rotation_max: Range(0, 2),
             ),
         )),
         GrowDirection((
             times: Value(6),
-            trunk_growth_direction: Normal,
-            branch_len: Range(3.0, 5.0),
+            trunk_growth_direction: GravityLean(strength: 0.3),
+            branch_len: Range(1.0,7.0),
             // branch_thickness: ValueOrRange(Value(1.0)),
             branch_thickness: IterationScale (
-                min: Range(2.0, 5.0),
-                max: Value(2.0),
+                min: Value(3.0),
+                max: Value(1.0),
             ),
             decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
@@ -27,41 +27,57 @@
             ),
         )),
         SpawnAttractorOnBranches((
-            offset_distance: 0.0,
+            offset_distance: 3.0,
             offset_dir: WorldUp,
             shape: Cube((size_x: 25.0, size_y: 20.0, size_z: 25.0)),
             attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 1.0),
             filter: BranchFilter(
                 iteration_filter: Last,
-                // iteration_filter: All,
             ),
         )),
         GrowToAttractors((
-            times: Value(2),
-            branch_len: Value(7.0),
+            times: Value(5),
+            branch_len: Value(5.0),
             kill_distance: 5.0,
             leaf_attraction_dist: 6.0,
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
-                iteration_filter: All,
                 id_filter: Target(1),
             ),
         )),
         SpawnLeaves((
-            selector: Tips,
-            shape: Sphere(radius: Value(6.0)),
+            shape: StarLeaf((
+                arm_length: Value(7.0),
+                arm_width: 3.5,
+                thickness: 1,
+                branch_sharpness: 0.7,
+                droop: 1.0,
+                tip_lift: 0.0,
+            )),
             filter: BranchFilter(
-                iteration_filter: Last,
+                iteration_filter: Greater(2),
             ),
             decoration: Value(Gradient((
-                modulation: Some(Random(percent_offset: 0.1)),
+                modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
-                    LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    LeafGradientEntry(percent: 0.66, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                    LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
             ))),
         )),
+        // SpawnLeaves((
+        //     selector: Tips,
+        //     shape: Sphere(radius: Value(6.0)),
+        //     decoration: Gradient((
+        //         modulation: Some(Random(percent_offset: 0.1)),
+        //         steps: [
+        //             LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
+        //             LeafGradientEntry(percent: 0.66, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+        //             LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+        //         ],
+        //     )),
+        // )),
     ],
 )

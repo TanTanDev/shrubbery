@@ -92,7 +92,7 @@
                 min: Value(3.0),
                 max: Value(1.5),
             ),
-            decoration: Single(VoxelMapping(name: "bark_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),

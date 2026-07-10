@@ -22,7 +22,7 @@
                 min: Range(4.0, 10.0),
                 max: Range(3.0, 10.0),
             ),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),

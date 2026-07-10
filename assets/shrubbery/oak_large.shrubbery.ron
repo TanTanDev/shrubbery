@@ -22,7 +22,7 @@
                 min: Value(4.5),
                 max: Value(1.0),
             ),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),
@@ -45,7 +45,7 @@
             kill_distance: 5.0,
             leaf_attraction_dist: 6.0,
             branch_thickness: ValueOrRange(Value(1.3)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 id_filter: Target(0),
                 iteration_filter: Lower(4),
@@ -69,7 +69,7 @@
             kill_distance: 10.0,
             leaf_attraction_dist: 16.0,
             branch_thickness: ValueOrRange(Value(2.0)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 id_filter: Target(0),
                 iteration_filter: Last,
@@ -78,14 +78,14 @@
         SpawnLeaves((
             selector: Tips,
             shape: Sphere(radius: Value(7.0)),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.1)),
                 steps: [
                     LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
                     LeafGradientEntry(percent: 0.66, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
-            )),
+            ))),
         )),
     ],
 )

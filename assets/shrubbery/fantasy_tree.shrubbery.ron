@@ -29,7 +29,7 @@
                 min: Value(5.0),
                 max: Value(1.0)
             ),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 sampling_method: IterationPercent,
                 modulation: None,
                 steps: [
@@ -37,7 +37,7 @@
                     LeafGradientEntry(percent: 0.55, voxel_mapping: VoxelMapping(name: "bark")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "bark_bright")),
                 ],
-            )),
+            ))),
             // decoration: Single(VoxelMapping(name: "leaf_bright")),
         )),
         GrowDirection((
@@ -49,19 +49,19 @@
             trunk_growth_direction: Target(Vec3(0,1,0)),
             branch_len: Value(9.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
         )),
         SpawnLeaves((
             selector: Tips,
             shape: Sphere(radius: Range(3.0, 7.0)),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.1)),
                 steps: [
                     LeafGradientEntry(percent: 0.33, voxel_mapping: VoxelMapping(name: "leaf_dark")),
                     LeafGradientEntry(percent: 0.66, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
-            )),
+            ))),
             filter: BranchFilter(
                 ignore_shapes: true,
                 id_filter: Last,
@@ -88,7 +88,7 @@
             branch_len: Value(8.0),
             kill_distance: 2.5,
             leaf_attraction_dist: 19.0,
-            decoration: Single(VoxelMapping(name: "leaf_bright")),
+            decoration: Value(Solid(VoxelMapping(name: "leaf_bright"))),
             branch_thickness: ValueOrRange(Value(1.0)),
         )),
         SpawnLeaves((
@@ -103,7 +103,7 @@
             filter: BranchFilter(
                 iteration_filter: Last,
             ),
-            decoration: Single(VoxelMapping(name: "leaf_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
         )),
     ],
 )

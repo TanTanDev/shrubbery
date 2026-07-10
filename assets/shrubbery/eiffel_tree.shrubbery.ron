@@ -52,7 +52,7 @@
                 min: Value(3.0),
                 max: Value(1.5),
             ),
-            decoration: Single(VoxelMapping(name: "bark_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),
@@ -67,7 +67,7 @@
                 min: Value(3.0),
                 max: Value(1.5),
             ),
-            decoration: Single(VoxelMapping(name: "bark_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
             filter: BranchFilter(
                 iteration_filter: Last,
             ),
@@ -98,7 +98,7 @@
             trunk_growth_direction: Target(Vec3(0,-1,0)),
             branch_len: Value(9.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "bark_dark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),
@@ -119,14 +119,14 @@
                 iteration_filter: All,
                 // iteration_filter: Last,
             ),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
                     LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
-            )),
+            ))),
         )),
     ],
 )

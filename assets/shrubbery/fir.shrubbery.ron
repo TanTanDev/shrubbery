@@ -17,7 +17,7 @@
             trunk_growth_direction: GravityLean(strength: 0.6),
             branch_len: Value(8.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),
@@ -27,7 +27,7 @@
             trunk_growth_direction: GravityLean(strength: 0.3),
             branch_len: Value(32.0),
             branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
         )),
         SpawnLeaves((
             shape: ConiferWhorl((
@@ -47,14 +47,24 @@
                 id_filter: Target(2),
                 // iteration_filter: Greater(0),
             ),
-            decoration: Gradient((
-                modulation: Some(Random(percent_offset: 0.01)),
-                steps: [
-                    LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                ],
-            )),
+            decoration: RandomWeighted([
+                (
+                    decoration: Solid(VoxelMapping(name: "bark")),
+                    weight: 1,
+                ),
+                (
+                    weight: 4,
+                    decoration: Gradient((
+                        modulation: Some(Random(percent_offset: 0.01)),
+                        steps: [
+                            LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                            LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
+                            LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                        ],
+                    ))
+                    
+                )
+            ]),
         )),
     ],
 )

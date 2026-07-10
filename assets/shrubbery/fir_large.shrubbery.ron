@@ -17,7 +17,7 @@
             trunk_growth_direction: Normal,
             branch_len: Range(10.0, 25.0),
             branch_thickness: ValueOrRange(Value(3.0)),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 ignore_root: false,
             ),
@@ -30,7 +30,7 @@
                 min: Value(2.0),
                 max: Value(1.0),
             ),
-            decoration: Single(VoxelMapping(name: "bark")),
+            decoration: Value(Solid(VoxelMapping(name: "bark"))),
         )),
         SpawnLeaves((
             shape: ConiferWhorl((
@@ -50,14 +50,14 @@
                 ignore_shapes: true,
                 id_filter: Target(2),
             ),
-            decoration: Gradient((
+            decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
                     LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
                     LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
                 ],
-            )),
+            ))),
         )),
     ],
 )

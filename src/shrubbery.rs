@@ -5,7 +5,7 @@ use crate::{
     branch::{Branch, BranchFilter},
     math_utils::{dist_to_line, rotate_point},
     shape::Shape,
-    voxel::{LeafDecoration, LeafShape, VoxelDefinitions, VoxelMapping},
+    voxel::{DecorationSelector, LeafDecoration, LeafShape, VoxelDefinitions, VoxelMapping},
 };
 
 use glam::{IVec3, Quat, Vec2, Vec3, ivec3, vec2, vec3};
@@ -71,7 +71,7 @@ pub struct GrowRadial {
     pub spacing_jitter: f32,
     pub branch_len: ValueOrRangeF32,
     pub branch_thickness: BranchThickness,
-    pub decoration: LeafDecoration,
+    pub decoration: DecorationSelector,
     #[serde(default)]
     pub assign_id: AssignBranchId,
     #[serde(default)]
@@ -141,7 +141,7 @@ pub struct GrowDirection {
     pub trunk_growth_direction: BranchGrowthDirection,
     pub branch_len: ValueOrRangeF32,
     pub branch_thickness: BranchThickness,
-    pub decoration: LeafDecoration,
+    pub decoration: DecorationSelector,
     #[serde(default)]
     pub assign_id: AssignBranchId,
     #[serde(default)]
@@ -192,7 +192,7 @@ pub struct GrowToAttractors {
     pub kill_distance: f32,
     /// how close an attractor has to be to pull branch
     pub leaf_attraction_dist: f32,
-    pub decoration: LeafDecoration,
+    pub decoration: DecorationSelector,
     pub branch_thickness: BranchThickness,
     #[serde(default)]
     pub assign_id: AssignBranchId,
@@ -316,7 +316,7 @@ pub struct SpawnLeavesStep {
     /// The voxel shape to place at each qualifying branch tip.
     pub shape: LeafShape,
     /// How to colour the leaf voxels.
-    pub decoration: LeafDecoration,
+    pub decoration: DecorationSelector,
     #[serde(default)]
     pub filter: BranchFilter,
     /// If true, overwrite any leaf group already assigned to a branch.
@@ -397,7 +397,9 @@ impl Default for ShrubberySettings {
                 branch_len: ValueOrRangeF32::Value(5.0),
                 kill_distance: 0.3,
                 leaf_attraction_dist: 5.,
-                decoration: LeafDecoration::Single(VoxelMapping::default()),
+                decoration: DecorationSelector::Value(LeafDecoration::Solid(
+                    VoxelMapping::default(),
+                )),
                 branch_thickness: BranchThickness::ValueOrRange(ValueOrRangeF32::Value(1.0)),
                 filter: BranchFilter::default(),
                 iteration_calculation: IterationCalculation::default(),
@@ -455,9 +457,9 @@ pub struct ShrubberyGenerator {
     pub rng: ChaCha8Rng,
     /// All leaf group definitions registered via `SpawnLeaves` steps.
     /// Each entry is `(shape, decoration)`; branches reference by index.
-    pub leaf_groups: Vec<(LeafShape, LeafDecoration)>,
+    pub leaf_groups: Vec<(LeafShape, DecorationSelector)>,
     // todo proper naming
-    pub branch_decorations: Vec<LeafDecoration>,
+    pub branch_decorations: Vec<DecorationSelector>,
 
     pub last_known_id: u32,
 }
