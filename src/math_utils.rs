@@ -3,11 +3,10 @@ use glam::{Vec2, Vec3, vec2};
 /// rotate a vec2 position around the origin of 0,0
 pub fn rotate_point(pos: Vec2, radians: f32) -> Vec2 {
     let (cos_theta, sin_theta) = (radians.cos(), radians.sin());
-    let out = vec2(
+    vec2(
         cos_theta * pos.x - sin_theta * pos.y,
         sin_theta * pos.x + cos_theta * pos.y,
-    );
-    out
+    )
 }
 
 /// return the shortest distance from a vec3 to a line with a star and end pos

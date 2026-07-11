@@ -34,6 +34,7 @@ pub struct Branch {
 }
 
 impl Branch {
+    #[allow(clippy::too_many_arguments)]
     /// make a new branch based on this branch calculated growth direciton
     pub fn next(
         &self,
@@ -63,7 +64,7 @@ impl Branch {
         Self {
             pos: self.pos + dir * branch_len,
             parent_index: Some(index),
-            dir: dir,
+            dir,
             attractors_count: 0,
             original_dir: dir,
             child_count: 0,
@@ -116,16 +117,11 @@ impl Default for BranchFilter {
 
 impl BranchFilter {
     pub fn should_include_branch(&self, branch: &Branch, last_id: u32) -> bool {
-        if self.ignore_shapes {
-            if branch.leaf_group.is_some() {
-                return false;
-            }
+        if self.ignore_shapes && branch.leaf_group.is_some() {
+            return false;
         }
-        if self.ignore_root {
-            // has no parent == is root
-            if branch.parent_index.is_none() {
-                return false;
-            }
+        if self.ignore_root && branch.parent_index.is_none() {
+            return false;
         }
         if !self.id_filter.is_id_included(branch, last_id) {
             return false;

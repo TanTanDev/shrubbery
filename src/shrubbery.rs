@@ -361,10 +361,6 @@ pub struct SpawnAttractorsOnBranches {
 }
 
 impl ShrubberySettings {
-    pub fn make_generator(&self, seed: u64) -> ShrubberyGenerator {
-        ShrubberyGenerator::new(&self, seed)
-    }
-
     pub fn resolve_voxel_definitions(&mut self, voxel_definitions: &VoxelDefinitions) {
         for step in self.build_steps.iter_mut() {
             match step {
@@ -466,28 +462,9 @@ pub struct ShrubberyGenerator {
 
 impl ShrubberyGenerator {
     // pub fn new(root_pos: Vec3, initial_dir: Vec3, seed: u64) -> Self {
-    pub fn new(settings: &ShrubberySettings, seed: u64) -> Self {
-        let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut branches = Vec::new();
-
-        // for i in 0..settings.trunk_settings.count {
-        //     let dir = settings.trunk_settings.initial_dir.get(&mut rng);
-        //     let root = Branch {
-        //         pos: settings.trunk_settings.root_pos,
-        //         parent_index: None,
-        //         dir,
-        //         attractors_count: 0,
-        //         original_dir: dir,
-        //         child_count: 0,
-        //         iteration: i as u32,
-        //         leaf_group: None,
-        //         thickness: 1.0,
-        //         decoration_group: None,
-        //         iteration_total: settings.trunk_settings.count as u32,
-        //         id: 0,
-        //     };
-        //     branches.push(root);
-        // }
+    pub fn new(seed: u64) -> Self {
+        let rng = ChaCha8Rng::seed_from_u64(seed);
+        let branches = Vec::new();
 
         Self {
             branches,

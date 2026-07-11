@@ -12,7 +12,7 @@ use rand::{RngExt, SeedableRng};
 use shrubbery::{
     bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
     bevy_plugin::ShrubberyAsset,
-    prelude::ShrubberyPlugin,
+    prelude::{ShrubberyGenerator, ShrubberyPlugin},
     voxel::{VoxelDefinitions, VoxelId, voxelize},
 };
 
@@ -248,7 +248,7 @@ fn spawn_on_asset_change(
         };
         let start = Instant::now();
         let now = Instant::now();
-        let mut generator = tree_asset.0.make_generator(tree_seed.0);
+        let mut generator = ShrubberyGenerator::new(tree_seed.0);
         info!("make generator: {:?}", now.elapsed());
         let now = Instant::now();
         generator.execute_all_step(&tree_asset.0);

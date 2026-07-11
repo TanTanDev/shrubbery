@@ -117,7 +117,7 @@ pub struct LeafGradientEntry {
 /// entry for selecting a LeafDecoration
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-struct WeightedDecorationEntry {
+pub struct WeightedDecorationEntry {
     weight: u32,
     decoration: LeafDecoration,
 }
@@ -472,7 +472,7 @@ fn voxelize_star_leaves(
     }
 }
 
-fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap, tree_seed: u64) {
+fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap, tree_seed: u64) {
     for (leaf_index, (leaf_shape, leaf_decoration_selector)) in
         shrubbery.leaf_groups.iter().enumerate()
     {
@@ -486,9 +486,9 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap,
             LeafShape::Sphere { radius } => {
                 process_sphere_leaves(
                     shrubbery,
-                    &mut voxels,
+                    voxels,
                     leaf_index,
-                    &leaf_decoration,
+                    leaf_decoration,
                     radius,
                     tree_seed,
                 );
@@ -499,7 +499,7 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap,
                     leaf_index,
                     conifer_whorl_shape,
                     leaf_decoration,
-                    &mut voxels,
+                    voxels,
                     tree_seed,
                 );
             }
@@ -508,8 +508,8 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, mut voxels: &mut VoxelMap,
                     shrubbery,
                     leaf_index,
                     star_leaf_shape,
-                    &leaf_decoration,
-                    &mut voxels,
+                    leaf_decoration,
+                    voxels,
                     tree_seed,
                 );
             }
@@ -730,7 +730,7 @@ fn emit_star_arms(
     params: &ArmShapeParams,
     decoration: &LeafDecoration,
     voxels: &mut VoxelMap,
-    mut rng: &mut ChaCha8Rng,
+    rng: &mut ChaCha8Rng,
     iteration_percent: f32,
 ) {
     if params.arm_length < 0.5 {
@@ -828,7 +828,7 @@ fn emit_star_arms(
                 );
                 let sample_pos = vec3(world_x, world_y, world_z);
                 let voxel_id = decoration.get_voxel_id(
-                    &mut rng,
+                    rng,
                     sample_pos,
                     bounds_min,
                     bounds_max,

@@ -1,11 +1,11 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rand::RngExt;
-use shrubbery::{shrubbery::ShrubberySettings, voxel::voxelize};
+use shrubbery::{prelude::ShrubberyGenerator, shrubbery::ShrubberySettings, voxel::voxelize};
 use std::hint::black_box;
 
 #[inline]
 fn build_and_voxelize(tree_asset: &ShrubberySettings, seed: u64) {
-    let mut generator = tree_asset.make_generator(seed);
+    let mut generator = ShrubberyGenerator::new(seed);
     generator.execute_all_step(&tree_asset);
     let _voxels = voxelize(&mut generator, seed);
 }

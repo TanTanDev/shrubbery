@@ -10,7 +10,7 @@ use rand::{RngExt, SeedableRng, seq::IndexedRandom};
 use shrubbery::{
     bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
     bevy_plugin::ShrubberyAsset,
-    prelude::ShrubberyPlugin,
+    prelude::{ShrubberyGenerator, ShrubberyPlugin},
     voxel::{VoxelDefinitions, VoxelId, voxelize},
 };
 
@@ -297,7 +297,7 @@ fn rebuild_tree_on_update(
         commands.entity(tree_entity).despawn_children();
 
         let unique_tree_seed = tree_seed.0 + i as u64;
-        let mut generator = tree_asset.0.make_generator(unique_tree_seed);
+        let mut generator = ShrubberyGenerator::new(unique_tree_seed);
         generator.execute_all_step(&tree_asset.0);
         let voxels = voxelize(&mut generator, unique_tree_seed);
 
