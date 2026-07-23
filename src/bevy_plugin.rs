@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use ahash::HashSet;
 use bevy::{
     asset::{Asset, AssetLoader},
@@ -5,6 +7,7 @@ use bevy::{
     reflect::TypePath,
 };
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::{shrubbery::ShrubberySettings, voxel::VoxelDefinitions};
 
@@ -25,20 +28,25 @@ impl Plugin for ShrubberyPlugin {
     }
 }
 
-use thiserror::Error;
-
 #[derive(Debug, Error)]
 pub enum RonLoaderError {
     #[error("could not load asset: {0}")]
     Io(#[from] std::io::Error),
     #[error("could not parse RON: {0}")]
-    RonSpannedError(#[from] ron::error::SpannedError),
+    Ron(#[from] ron::error::SpannedError),
 }
 
-// todo: rename to shrubbery asset
+/// A loaded `*.shrubbery.ron` file, wrapping a [`ShrubberySettings`] recipe.
 #[derive(Clone, Default, Debug, Asset, TypePath, Serialize, Deserialize)]
-#[serde(transparent)] // collapse the inner tuple
+#[cfg_attr(feature = "serde", serde(transparent))] // collapse the inner newtype
 pub struct ShrubberyAsset(pub ShrubberySettings);
+
+impl Deref for ShrubberyAsset {
+    type Target = ShrubberySettings;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Default, TypePath)]
 pub struct ShrubberyAssetLoader;
@@ -65,7 +73,8 @@ impl AssetLoader for ShrubberyAssetLoader {
     }
 }
 
-/// these TreeAssets are awaiting to sync voxel names into VoxelIds, when VoxelDictionary are present
+/// Tree assets waiting for a `VoxelDefinitions` resource to resolve their
+/// voxel names into ids.
 #[derive(Resource)]
 pub struct TreeAssetsAwaitingSync(HashSet<AssetId<ShrubberyAsset>>);
 
@@ -80,8 +89,8 @@ fn begin_sync_voxel_ids_with_tree_assets(
         else {
             continue;
         };
-        // if voxel definitions are set, immediately resolve voxel ids' otherwise pass it to
-        // 'sync_voxel_ids_with_tree_assets'
+        // Resolve now if a registry is already present, otherwise defer until
+        // `sync_voxel_ids_with_tree_assets` sees one.
         match &voxel_definitions {
             Some(voxel_definitions) => {
                 if let Some(tree_asset) = tree_assets.get_mut_untracked(*id) {
@@ -102,12 +111,12 @@ fn sync_voxel_ids_with_tree_assets(
 ) {
     awaiting.0.retain(|id| {
         let Some(asset) = tree_assets.get_mut_untracked(*id) else {
-            return false; // id is no longer valid, don't retain
+            return false; // id no longer valid
         };
         let Some(voxel_definitions) = &voxel_definitions else {
-            return true;
+            return true; // still waiting on a registry
         };
         asset.0.resolve_voxel_definitions(voxel_definitions);
-        false // don't retain it's resolved, 
+        false
     });
 }

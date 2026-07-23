@@ -5,58 +5,51 @@ use crate::shrubbery::BranchGrowthDirection;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+/// A single segment of the generated tree.
 #[derive(Debug)]
 pub struct Branch {
     pub pos: Vec3,
     pub parent_index: Option<usize>,
     pub dir: Vec3,
-
-    /// the thickness radius for making bark
+    /// Thickness radius used when rasterizing bark.
     pub thickness: f32,
-    /// todo: remove? might not be needed
+    /// Direction before attractors pulled it; restored by [`reset`](Self::reset).
     pub original_dir: Vec3,
-    /// how many attractors are pulling this node
+    /// How many attractors are currently pulling this node.
     pub attractors_count: i32,
-    /// how many children branches this branch has
     pub child_count: i32,
-    /// id used for filtering
+    /// Generation id, used for filtering.
     pub id: u32,
-    /// what iteration this branch was made
     pub iteration: u32,
-    /// what iteration this branch was made
     pub iteration_total: u32,
-    /// Index into the generator's `leaf_groups` vec, set by a `SpawnLeaves`
-    /// build step.  `None` means no leaf decoration has been assigned yet.
+    /// Index into the generator's `leaf_groups`, set by a `SpawnLeaves` step.
     pub leaf_group: Option<usize>,
-
-    // todo name
+    /// Index into the generator's `branch_decorations`.
     pub decoration_group: Option<usize>,
 }
 
 impl Branch {
+    /// Build the next segment growing from this one along `growth_dir`.
     #[allow(clippy::too_many_arguments)]
-    /// make a new branch based on this branch calculated growth direciton
-    pub fn next(
+    pub fn child(
         &self,
         index: usize,
         mut branch_len: f32,
         id: u32,
-        trunk_growth_dir: &BranchGrowthDirection,
+        growth_dir: &BranchGrowthDirection,
         thickness: f32,
         iteration: u32,
         iteration_total: u32,
     ) -> Self {
-        let dir = match trunk_growth_dir {
+        let dir = match growth_dir {
             BranchGrowthDirection::Normal => self.dir,
             BranchGrowthDirection::GravityLean { strength } => {
                 (self.dir + Vec3::NEG_Y * *strength).normalize()
-                // self.dir * branch_len
             }
             BranchGrowthDirection::Target(dir) => *dir,
             BranchGrowthDirection::WorldPos(world_pos) => {
                 let to_world = world_pos - self.pos;
                 branch_len = to_world.length();
-
                 to_world.normalize()
             }
         };
@@ -83,6 +76,7 @@ impl Branch {
     }
 }
 
+#[cfg(feature = "serde")]
 fn default_true() -> bool {
     true
 }
@@ -90,17 +84,15 @@ fn default_true() -> bool {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct BranchFilter {
-    #[serde(default = "default_true")]
-    // #[serde(default)]
+    /// Skip branches that already have a leaf group assigned.
+    #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub ignore_shapes: bool,
-    #[serde(default = "default_true")]
-    // #[serde(default)]
+    /// Skip root branches (those with no parent).
+    #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub ignore_root: bool,
-    // #[serde(default)]
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub id_filter: IdFilter,
-    // #[serde(default)]
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub iteration_filter: IterationFilter,
 }
 
@@ -126,7 +118,6 @@ impl BranchFilter {
         if !self.id_filter.is_id_included(branch, last_id) {
             return false;
         }
-
         if !self
             .iteration_filter
             .is_iteration_included(branch.iteration, branch.iteration_total)
@@ -164,11 +155,8 @@ impl IterationFilter {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum IdFilter {
     #[default]
-    /// only the last iteration of the last id
     Last,
-    /// include all ids
     All,
-    /// specify exact id
     Target(u32),
 }
 

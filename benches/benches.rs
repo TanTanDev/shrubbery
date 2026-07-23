@@ -1,13 +1,12 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rand::RngExt;
-use shrubbery::{prelude::ShrubberyGenerator, shrubbery::ShrubberySettings, voxel::voxelize};
+use shrubbery::{prelude::ShrubberyGenerator, ShrubberySettings};
 use std::hint::black_box;
 
 #[inline]
 fn build_and_voxelize(tree_asset: &ShrubberySettings, seed: u64) {
-    let mut generator = ShrubberyGenerator::new(seed);
-    generator.execute_all_step(&tree_asset);
-    let _voxels = voxelize(&mut generator, seed);
+    let mut generator = ShrubberyGenerator::generate(seed, tree_asset);
+    let _voxels = generator.voxelize();
 }
 
 pub fn load_all_shrubberies() -> Vec<(String, ShrubberySettings)> {

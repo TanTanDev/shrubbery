@@ -76,7 +76,6 @@
             ),
         )),
         SpawnLeaves((
-            selector: Tips,
             shape: Sphere(radius: Value(7.0)),
             decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.1)),

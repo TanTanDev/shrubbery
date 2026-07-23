@@ -12,8 +12,7 @@ use rand::{RngExt, SeedableRng};
 use shrubbery::{
     bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
     bevy_plugin::ShrubberyAsset,
-    prelude::{ShrubberyGenerator, ShrubberyPlugin},
-    voxel::{VoxelDefinitions, VoxelId, voxelize},
+    prelude::*,
 };
 
 #[repr(u8)]
@@ -39,7 +38,7 @@ impl VoxelMaterials {
             error!("no color at i: {:?}", i);
             return Color::default();
         };
-        material.material.clone()
+        material.material
     }
 }
 
@@ -217,6 +216,7 @@ fn update_on_press(
     tree_seed.0 = rng.random();
 }
 
+#[allow(clippy::too_many_arguments)]
 fn spawn_on_asset_change(
     mut events: MessageReader<AssetEvent<ShrubberyAsset>>,
     tree_assets: Res<Assets<ShrubberyAsset>>,
@@ -248,16 +248,13 @@ fn spawn_on_asset_change(
         };
         let start = Instant::now();
         let now = Instant::now();
-        let mut generator = ShrubberyGenerator::new(tree_seed.0);
-        info!("make generator: {:?}", now.elapsed());
+        let mut generator = ShrubberyGenerator::generate(tree_seed.0, tree_asset);
+        info!("build: {:?}", now.elapsed());
         let now = Instant::now();
-        generator.execute_all_step(&tree_asset.0);
-        info!("execute all steps: {:?}", now.elapsed());
-        let now = Instant::now();
-        let voxels = voxelize(&mut generator, tree_seed.0);
+        let voxels = generator.voxelize();
         info!("voxelize: {:?}", now.elapsed());
         info!("total: {:?}", start.elapsed());
-        info!("bounds: {:?}", generator.get_bounds());
+        info!("bounds: {:?}", generator.bounds());
 
         let root_entity_id = commands
             .spawn((Transform::default(), Visibility::Visible, PreviewTreeTag))

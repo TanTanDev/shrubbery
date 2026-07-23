@@ -1,6 +1,6 @@
-use glam::{Vec2, Vec3, vec2};
+use glam::{Vec2, vec2};
 
-/// rotate a vec2 position around the origin of 0,0
+/// Rotate `pos` around the origin (0, 0) by `radians`.
 pub fn rotate_point(pos: Vec2, radians: f32) -> Vec2 {
     let (cos_theta, sin_theta) = (radians.cos(), radians.sin());
     vec2(
@@ -9,21 +9,7 @@ pub fn rotate_point(pos: Vec2, radians: f32) -> Vec2 {
     )
 }
 
-/// return the shortest distance from a vec3 to a line with a star and end pos
-pub fn dist_to_line(pos: Vec3, line_start: Vec3, line_end: Vec3) -> f32 {
-    let ab = line_end - line_start;
-    let ac = pos - line_start;
-    if ac.dot(ab) <= 0.0 {
-        return ac.length();
-    }
-    let bv = pos - line_end;
-    if bv.dot(ab) >= 0.0 {
-        return bv.length();
-    }
-    ab.cross(ac).length() / ab.length()
-}
-
-/// return the percent placement of a position in relation to min max boudns
+/// Where `position` falls in `[min, max]`, as a clamped 0..1 value.
 pub fn percent_in_range(position: f32, min: f32, max: f32) -> f32 {
     ((position - min) / (max - min)).clamp(0.0, 1.0)
 }

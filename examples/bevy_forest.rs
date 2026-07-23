@@ -10,8 +10,7 @@ use rand::{RngExt, SeedableRng, seq::IndexedRandom};
 use shrubbery::{
     bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
     bevy_plugin::ShrubberyAsset,
-    prelude::{ShrubberyGenerator, ShrubberyPlugin},
-    voxel::{VoxelDefinitions, VoxelId, voxelize},
+    prelude::*,
 };
 
 #[repr(u8)]
@@ -37,7 +36,7 @@ impl VoxelMaterials {
             error!("no color at i: {:?}", i);
             return Color::default();
         };
-        material.material.clone()
+        material.material
     }
 }
 
@@ -259,6 +258,7 @@ fn setup_forest(
     *is_trees_spawned = true;
 }
 
+#[allow(clippy::too_many_arguments)]
 fn rebuild_tree_on_update(
     mut events: MessageReader<AssetEvent<ShrubberyAsset>>,
     tree_assets: Res<Assets<ShrubberyAsset>>,
@@ -289,7 +289,7 @@ fn rebuild_tree_on_update(
         .filter_map(|(entity, tree)| {
             tree_assets
                 .get(&tree.tree_handle)
-                .and_then(|asset| Some((entity, asset)))
+                .map(|asset| (entity, asset))
         })
         .enumerate()
     {
@@ -297,9 +297,8 @@ fn rebuild_tree_on_update(
         commands.entity(tree_entity).despawn_children();
 
         let unique_tree_seed = tree_seed.0 + i as u64;
-        let mut generator = ShrubberyGenerator::new(unique_tree_seed);
-        generator.execute_all_step(&tree_asset.0);
-        let voxels = voxelize(&mut generator, unique_tree_seed);
+        let mut generator = ShrubberyGenerator::generate(unique_tree_seed, tree_asset);
+        let voxels = generator.voxelize();
 
         for (pos, voxel_id) in voxels.into_iter() {
             let color = voxel_materials.color(voxel_id.0 as usize);

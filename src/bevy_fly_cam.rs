@@ -3,10 +3,6 @@ use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 
-pub mod prelude {
-    pub use crate::*;
-}
-
 /// Mouse sensitivity and movement speed
 #[derive(Resource)]
 pub struct MovementSettings {
@@ -49,8 +45,7 @@ impl Default for KeyBindings {
     }
 }
 
-/// Used in queries when you want flycams and not other cameras
-/// A marker component used in queries when you want flycams and not other cameras
+/// Marker component for queryable fly cameras.
 #[derive(Component)]
 pub struct FlyCam;
 

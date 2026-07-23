@@ -49,7 +49,6 @@
             ),
         )),
         SpawnLeaves((
-            selector: Tips,
             shape: Sphere(radius: Value(6.0)),
             filter: BranchFilter(
                 iteration_filter: Last,

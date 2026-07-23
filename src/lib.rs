@@ -1,13 +1,25 @@
-pub mod algorithm_settings;
+//! Procedural voxel vegetation generation.
+//!
+//! Build a [`ShrubberyGenerator`] from a [`ShrubberySettings`] recipe and a
+//! seed, then call [`ShrubberyGenerator::voxelize`] to get the voxel grid.
+//! See the `examples/` directory for end-to-end usage with Bevy.
+//!
+//! ```
+//! use shrubbery::prelude::*;
+//!
+//! let settings: ShrubberySettings = Default::default();
+//! let mut generator = ShrubberyGenerator::generate(42, &settings);
+//! let voxels = generator.voxelize();
+//! ```
+
 pub mod attractor;
-pub mod attractor_generator_settings;
 pub mod branch;
+pub mod math_utils;
 pub mod shape;
 pub mod shrubbery;
-pub mod vec;
 pub mod voxel;
+
 pub use glam;
-pub mod math_utils;
 
 #[cfg(feature = "bevy")]
 pub mod bevy_fly_cam;
@@ -15,12 +27,9 @@ pub mod bevy_fly_cam;
 pub mod bevy_plugin;
 
 pub mod prelude {
-    pub use crate::shrubbery::ShrubberyGenerator;
+    pub use crate::shrubbery::{ShrubberyGenerator, ShrubberySettings, ShrubberyStep};
+    pub use crate::voxel::{VoxelDefinitions, VoxelId, VoxelMapping};
 
     #[cfg(feature = "bevy")]
     pub use crate::bevy_plugin::ShrubberyPlugin;
-}
-
-pub mod math {
-    pub use glam::*;
 }

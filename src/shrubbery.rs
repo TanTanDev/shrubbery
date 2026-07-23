@@ -3,7 +3,7 @@ use ahash::HashSet;
 use crate::{
     attractor::Attractor,
     branch::{Branch, BranchFilter},
-    math_utils::{dist_to_line, rotate_point},
+    math_utils::rotate_point,
     shape::Shape,
     voxel::{DecorationSelector, LeafDecoration, LeafShape, VoxelDefinitions, VoxelMapping},
 };
@@ -17,9 +17,8 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ValueOrRangeU32 {
-    /// constant value
     Value(u32),
-    /// value chosen between (min, max) inclusive
+    /// Inclusive `[min, max]`.
     Range(u32, u32),
 }
 
@@ -35,9 +34,8 @@ impl ValueOrRangeU32 {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ValueOrRangeF32 {
-    /// constant value
     Value(f32),
-    /// value chosen between (min, max) inclusive
+    /// Inclusive `[min, max]`.
     Range(f32, f32),
 }
 
@@ -59,12 +57,9 @@ impl ValueOrRangeF32 {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowRadial {
-    /// chance we'll run this step
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub chance: StepChance,
-    /// how many branches to spawn
     pub count: ValueOrRangeU32,
-    /// how much to angle
     pub pitch_degrees: ValueOrRangeF32,
     /// randomizes spacing between the branches
     /// 0.0: spaced equal distance. 1.0: maximum chaos  
@@ -72,32 +67,27 @@ pub struct GrowRadial {
     pub branch_len: ValueOrRangeF32,
     pub branch_thickness: BranchThickness,
     pub decoration: DecorationSelector,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub assign_id: AssignBranchId,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub filter: BranchFilter,
 }
 
-/// instructions for how to build a space colonization tree
+/// One build step in a tree's growth recipe.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum ShrubberyStep {
-    /// Grow branches in a fixed direction (trunk building)
     SpawnRootBranch(SpawnRootBranch),
-    /// Grow branches in a fixed direction (trunk building)
     GrowDirection(GrowDirection),
-    /// Grow branches in a special radial way
     GrowRadial(GrowRadial),
-    /// grow branches using space-colonization toward existing attractors
+    /// Grow branches toward existing attractors using space colonization.
     GrowToAttractors(GrowToAttractors),
-    /// Spawn attractors, for space-colonization at a fixed world position
-    /// todo: implement
+    /// Spawn attractors at a fixed world position.
     SpawnAttractors(SpawnAttractors),
-    /// Spawn attractors,for space-colonization: placed relative to each current tip branch
+    /// Spawn one attractor shape per selected branch tip.
     SpawnAttractorOnBranches(SpawnAttractorsOnBranches),
-    /// Remove all existing attractors
     ClearAttractors,
-    /// Assign a leaf shape to branches matching the selector.
+    /// Assign a leaf shape to branches matching the filter.
     ///
     /// Only branches that have not yet been assigned a leaf group are
     /// considered, unless `overwrite` is true.  Run this immediately after
@@ -108,17 +98,14 @@ pub enum ShrubberyStep {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ShrubberySettings {
-    /// steps, how to grow/shape/modify the tree
     pub build_steps: Vec<ShrubberyStep>,
 }
 
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum AssignBranchId {
-    /// auto increment branch id based upon previous
     #[default]
     AutoIncrement,
-    /// specify a generation id
     AssignId(u32),
 }
 
@@ -134,17 +121,16 @@ impl AssignBranchId {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowDirection {
-    /// chance we'll run this step
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub chance: StepChance,
     pub times: ValueOrRangeU32,
     pub trunk_growth_direction: BranchGrowthDirection,
     pub branch_len: ValueOrRangeF32,
     pub branch_thickness: BranchThickness,
     pub decoration: DecorationSelector,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub assign_id: AssignBranchId,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub filter: BranchFilter,
 }
 
@@ -181,11 +167,10 @@ impl BranchThickness {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowToAttractors {
-    /// chance we'll run this step
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub chance: StepChance,
     pub times: ValueOrRangeU32,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub iteration_calculation: IterationCalculation,
     pub branch_len: ValueOrRangeF32,
     /// radius to delete attractors
@@ -194,9 +179,9 @@ pub struct GrowToAttractors {
     pub leaf_attraction_dist: f32,
     pub decoration: DecorationSelector,
     pub branch_thickness: BranchThickness,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub assign_id: AssignBranchId,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub filter: BranchFilter,
 }
 
@@ -216,7 +201,6 @@ pub enum BranchGrowthDirection {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum InitialDir {
-    /// specific direction
     Value(Vec3),
     Random {
         /// angle in degrees
@@ -249,13 +233,13 @@ impl InitialDir {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnRootBranch {
-    #[serde(default)]
-    assign_id: AssignBranchId,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub assign_id: AssignBranchId,
     /// how many initial trunks to spawn
-    count: usize,
-    branch_len: ValueOrRangeF32,
-    pos: Vec3,
-    initial_dir: InitialDir,
+    pub count: usize,
+    pub branch_len: ValueOrRangeF32,
+    pub pos: Vec3,
+    pub initial_dir: InitialDir,
 }
 
 impl Default for SpawnRootBranch {
@@ -273,8 +257,7 @@ impl Default for SpawnRootBranch {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnAttractors {
-    /// chance we'll run this step
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub chance: StepChance,
     pub pos: Vec3,
     pub shape: Shape,
@@ -310,18 +293,17 @@ impl StepChance {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnLeavesStep {
-    /// chance we'll run this step
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub chance: StepChance,
     /// The voxel shape to place at each qualifying branch tip.
     pub shape: LeafShape,
     /// How to colour the leaf voxels.
     pub decoration: DecorationSelector,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub filter: BranchFilter,
     /// If true, overwrite any leaf group already assigned to a branch.
     /// If false (default), only undecorated branches are affected.
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub overwrite: bool,
 }
 
@@ -345,8 +327,7 @@ pub enum BranchOffsetDir {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnAttractorsOnBranches {
-    /// chance we'll run this step
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub chance: StepChance,
     /// How far along `offset_dir` from the branch tip to place the shape centre.
     pub offset_distance: f32,
@@ -356,7 +337,7 @@ pub struct SpawnAttractorsOnBranches {
     pub shape: Shape,
     /// Density / jitter settings for attractor placement inside the shape.
     pub attractor_spacing: AttractorSpacing,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub filter: BranchFilter,
 }
 
@@ -406,13 +387,6 @@ impl Default for ShrubberySettings {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Debug, PartialEq)]
-pub enum BarkDecorator {
-    /// use the same bark voxel
-    Single(VoxelMapping),
-}
-
 /// describes how many attractors to spawn in shape
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -444,41 +418,55 @@ pub enum IterationCalculation {
     Parent,
 }
 
-/// the working struct to process our proc generation
+/// Working state for a single tree's procedural generation.
+///
+/// Build with [`ShrubberyGenerator::new`] (or the [`generate`][Self::generate]
+/// shortcut), run the recipe's steps, then call [`voxelize`][Self::voxelize] to
+/// produce the final voxel grid.
 pub struct ShrubberyGenerator {
     pub branches: Vec<Branch>,
     pub attractors: Vec<Attractor>,
     pub min_bounds: Vec3,
     pub max_bounds: Vec3,
     pub rng: ChaCha8Rng,
+    /// Seed this generator was created from. Voxelization re-derives
+    /// per-branch RNG streams from it so output stays deterministic.
+    pub seed: u64,
     /// All leaf group definitions registered via `SpawnLeaves` steps.
     /// Each entry is `(shape, decoration)`; branches reference by index.
     pub leaf_groups: Vec<(LeafShape, DecorationSelector)>,
-    // todo proper naming
+    /// One entry per growth step, indexed by `Branch::decoration_group`.
     pub branch_decorations: Vec<DecorationSelector>,
 
     pub last_known_id: u32,
 }
 
 impl ShrubberyGenerator {
-    // pub fn new(root_pos: Vec3, initial_dir: Vec3, seed: u64) -> Self {
     pub fn new(seed: u64) -> Self {
-        let rng = ChaCha8Rng::seed_from_u64(seed);
-        let branches = Vec::new();
-
         Self {
-            branches,
+            branches: Vec::new(),
             attractors: Vec::new(),
-            min_bounds: Vec3::splat(0f32),
-            max_bounds: Vec3::splat(0f32),
-            rng,
+            min_bounds: Vec3::ZERO,
+            max_bounds: Vec3::ZERO,
+            rng: ChaCha8Rng::seed_from_u64(seed),
+            seed,
             leaf_groups: Vec::new(),
             branch_decorations: Vec::new(),
             last_known_id: 0,
         }
     }
 
-    /// helper
+    /// Create a generator and immediately run all of `settings`' build steps.
+    ///
+    /// Equivalent to [`new`][Self::new] followed by
+    /// [`execute_all_steps`][Self::execute_all_steps]; useful when you don't
+    /// need to drive individual steps.
+    pub fn generate(seed: u64, settings: &ShrubberySettings) -> Self {
+        let mut generator = Self::new(seed);
+        generator.execute_all_steps(settings);
+        generator
+    }
+
     fn get_branch_indices_filtered(&self, filter: &BranchFilter) -> Vec<usize> {
         self.branches
             .iter()
@@ -525,7 +513,7 @@ impl ShrubberyGenerator {
         }
     }
 
-    pub fn execute_all_step(&mut self, settings: &ShrubberySettings) {
+    pub fn execute_all_steps(&mut self, settings: &ShrubberySettings) {
         for step in settings.build_steps.iter() {
             self.execute_step(step);
         }
@@ -537,12 +525,12 @@ impl ShrubberyGenerator {
         if !s.chance.should_run(&mut self.rng) {
             return;
         }
-        // Snapshot tip positions/dirs so we don't hold a borrow on self.branches.
+        // Snapshot tip positions/dirs first so we don't hold a borrow on
+        // self.branches while mutating self.attractors below.
         let origins: Vec<(Vec3, Vec3)> = self
             .branches
             .iter()
-            // .filter(|b| branch_selector_matches(&s.selector, b))
-            // skip root branches
+            // Roots have no direction worth offsetting from.
             .filter(|b| b.parent_index.is_some())
             .filter(|b| s.filter.should_include_branch(b, self.last_known_id))
             .map(|b| (b.pos, b.dir))
@@ -567,12 +555,12 @@ impl ShrubberyGenerator {
         }
     }
 
-    /// Assign a leaf group to all branches matching the selector.
+    /// Assign a leaf group to all branches matching the filter.
     ///
-    /// Registers a new `LeafGroup` (shape + decoration) in `self.leaf_groups`,
-    /// then sets `branch.leaf_group = Some(group_index)` on every qualifying
-    /// branch.  By default only undecorated branches are touched; set
-    /// `step.overwrite = true` to re-decorate already-assigned branches.
+    /// Registers a new `(shape, decoration)` group in `leaf_groups`, then sets
+    /// `branch.leaf_group = Some(group_index)` on every qualifying branch.
+    /// By default only undecorated branches are touched; set `overwrite = true`
+    /// to re-decorate already-assigned branches.
     pub fn spawn_leaves(&mut self, step: &SpawnLeavesStep) {
         if !step.chance.should_run(&mut self.rng) {
             return;
@@ -581,11 +569,11 @@ impl ShrubberyGenerator {
         self.leaf_groups
             .push((step.shape.clone(), step.decoration.clone()));
 
+        // Roots are skipped: with IterationFilter::Last they'd register as the
+        // last iteration and get decorated at the tree base.
         for branch in self
             .branches
             .iter_mut()
-            // skip root branches because they might register as
-            // IterationFilter::Last, accidentally resutling in shapes spawning at root
             .filter(|branch| branch.parent_index.is_some())
         {
             let qualifies = step
@@ -600,18 +588,19 @@ impl ShrubberyGenerator {
         }
     }
 
-    pub fn get_bound_square_half(&self) -> f32 {
-        let size = self.get_bounding_size();
+    /// Half the larger of the X/Z bounding dimensions, rounded up.
+    pub fn bounding_square_half(&self) -> f32 {
+        let size = self.bounding_size();
         (size.x.max(size.z) as f32 * 0.5).ceil()
     }
 
-    pub fn get_bounding_size(&self) -> IVec3 {
-        let (min_bounds, max_bounds) = self.get_bounds();
+    pub fn bounding_size(&self) -> IVec3 {
+        let (min_bounds, max_bounds) = self.bounds();
         max_bounds - min_bounds
     }
 
-    /// returns the min x,y,z and max x,y,z position
-    pub fn get_bounds(&self) -> (IVec3, IVec3) {
+    /// Integer min/max corners of the axis-aligned bounding box.
+    pub fn bounds(&self) -> (IVec3, IVec3) {
         (
             ivec3(
                 self.min_bounds.x.ceil() as i32,
@@ -626,23 +615,16 @@ impl ShrubberyGenerator {
         )
     }
 
-    /// expand bounding if branch_pos is outside
-    pub fn update_bound(
-        min_bounds: &mut Vec3,
-        max_bounds: &mut Vec3,
-        branch_pos: Vec3,
-        // expand if a branch has a thickness
-        radius: f32,
-    ) {
-        min_bounds.x = min_bounds.x.min(branch_pos.x - radius);
-        min_bounds.y = min_bounds.y.min(branch_pos.y - radius);
-        min_bounds.z = min_bounds.z.min(branch_pos.z - radius);
-        max_bounds.x = max_bounds.x.max(branch_pos.x + radius);
-        max_bounds.y = max_bounds.y.max(branch_pos.y + radius);
-        max_bounds.z = max_bounds.z.max(branch_pos.z + radius);
+    /// Expand the bounding box to include `pos`, padded by `radius` for thickness.
+    fn update_bound(&mut self, pos: Vec3, radius: f32) {
+        self.min_bounds.x = self.min_bounds.x.min(pos.x - radius);
+        self.min_bounds.y = self.min_bounds.y.min(pos.y - radius);
+        self.min_bounds.z = self.min_bounds.z.min(pos.z - radius);
+        self.max_bounds.x = self.max_bounds.x.max(pos.x + radius);
+        self.max_bounds.y = self.max_bounds.y.max(pos.y + radius);
+        self.max_bounds.z = self.max_bounds.z.max(pos.z + radius);
     }
 
-    /// spawn new branches based upon speficied grow direction
     pub fn grow_direction(&mut self, grow_trunk: &GrowDirection) {
         if !grow_trunk.chance.should_run(&mut self.rng) {
             return;
@@ -663,7 +645,7 @@ impl ShrubberyGenerator {
                     .branch_thickness
                     .get(i, grow_times, &mut self.rng);
 
-                let mut new_branch = self.branches[running_index].next(
+                let mut new_branch = self.branches[running_index].child(
                     running_index,
                     grow_trunk.branch_len.get(&mut self.rng),
                     id,
@@ -674,19 +656,13 @@ impl ShrubberyGenerator {
                 );
                 new_branch.decoration_group = Some(decoration_index);
                 self.branches[*branch_index].child_count += 1;
-                Self::update_bound(
-                    &mut self.min_bounds,
-                    &mut self.max_bounds,
-                    new_branch.pos,
-                    thickness,
-                );
+                self.update_bound(new_branch.pos, thickness);
                 self.branches.push(new_branch);
                 running_index = self.branches.len() - 1;
             }
         }
     }
 
-    /// spawn branches in a radial formation
     pub fn grow_radial(&mut self, grow_radial: &GrowRadial) {
         if !grow_radial.chance.should_run(&mut self.rng) {
             return;
@@ -721,7 +697,7 @@ impl ShrubberyGenerator {
                 dir = Quat::from_rotation_y(yaw) * dir;
                 dir = Quat::from_axis_angle(dir.cross(Vec3::Y).normalize(), pitch) * dir;
 
-                let mut new_branch = self.branches[branch_index].next(
+                let mut new_branch = self.branches[branch_index].child(
                     branch_index,
                     grow_radial.branch_len.get(&mut self.rng),
                     id,
@@ -734,19 +710,13 @@ impl ShrubberyGenerator {
                 new_branch.decoration_group = Some(decoration_index);
                 self.branches[branch_index].child_count += 1;
 
-                Self::update_bound(
-                    &mut self.min_bounds,
-                    &mut self.max_bounds,
-                    new_branch.pos,
-                    thickness,
-                );
+                self.update_bound(new_branch.pos, thickness);
 
                 self.branches.push(new_branch);
             }
         }
     }
 
-    /// using space colonization algorithm, spawn new branches
     pub fn grow_to_attractors(&mut self, grow_to_attractors: &GrowToAttractors) {
         if !grow_to_attractors.chance.should_run(&mut self.rng) {
             return;
@@ -760,12 +730,11 @@ impl ShrubberyGenerator {
         let id = grow_to_attractors.assign_id.get(self.last_known_id);
         self.last_known_id = id;
 
-        // find initial growing branches, based upon filtering
         let mut active_branches: HashSet<usize> = self
             .branches
             .iter_mut()
             .enumerate()
-            // never grow branches from the root
+            // never grow from the root
             .filter(|(_i, branch)| branch.parent_index.is_some())
             .filter(|(_i, branch)| {
                 grow_to_attractors
@@ -782,28 +751,23 @@ impl ShrubberyGenerator {
                 for (branch_index, branch) in self
                     .branches
                     .iter_mut()
-                    // never grow branches from the root
                     .enumerate()
                     .filter(|(i, _branch)| active_branches.contains(i))
                 {
                     let dist = attractor.pos.distance(branch.pos);
-                    // is this branch to close to the leaf, discard it
                     if dist < grow_to_attractors.kill_distance {
                         attractor.reached = true;
                         closest_branch = None;
                         break;
                     }
-                    // to far away to be attracted towards
                     if dist > grow_to_attractors.leaf_attraction_dist {
                         continue;
                     }
-                    // record closest branch
                     if dist < closest_dist {
                         closest_branch = Some(branch_index);
                         closest_dist = dist;
                     }
                 }
-                // pull closest branch towards attractor
                 if let Some(closest_branch_index) = closest_branch {
                     let closest_branch_pos = self.branches[closest_branch_index].pos;
                     let new_branch_dir = attractor.pos - closest_branch_pos;
@@ -814,7 +778,6 @@ impl ShrubberyGenerator {
             }
             self.attractors.retain(|attractor| !attractor.reached);
 
-            // spawn new branches using previous calculations
             let mut to_add = vec![];
             for (branch_index, branch) in self
                 .branches
@@ -834,7 +797,7 @@ impl ShrubberyGenerator {
                         IterationCalculation::Parent => (branch.iteration, branch.iteration_total),
                     };
 
-                let mut new_branch = branch.next(
+                let mut new_branch = branch.child(
                     branch_index,
                     grow_to_attractors.branch_len.get(&mut self.rng),
                     id,
@@ -846,87 +809,47 @@ impl ShrubberyGenerator {
                 self.last_known_id = u32::max(self.last_known_id, new_branch.id);
                 new_branch.decoration_group = Some(group_index);
                 branch.child_count += 1;
-                Self::update_bound(
-                    &mut self.min_bounds,
-                    &mut self.max_bounds,
-                    new_branch.pos,
-                    thickness,
-                );
                 to_add.push(new_branch);
                 branch.reset();
             }
+            // Bounds are updated outside the branch iterator so we don't hold
+            // two `&mut self` borrows at once.
+            for branch in &to_add {
+                self.update_bound(branch.pos, branch.thickness);
+            }
             let branch_len = self.branches.len();
             self.branches.extend(to_add);
-            // the active branches have (possibly) grown, no need to recheck them
+            // Only newly-spawned branches are eligible to grow next round;
+            // their parents already extended this iteration.
             active_branches.clear();
-            // "flag" newly created branches to be able to grow next iteration.
-            let added_indices: Vec<usize> = (branch_len..self.branches.len()).collect();
-            active_branches.extend(added_indices);
+            active_branches.extend(branch_len..self.branches.len());
         }
     }
 
-    /// spawn particles inside provided shape, based on settings
-    pub fn spawn_attractors_from_shape(
-        &mut self,
-        pos: Vec3,
-        shape: Shape,
-        attractor_generator_settings: &AttractorSpacing,
-    ) {
-        shape.generate(
-            pos,
-            &mut self.attractors,
-            attractor_generator_settings,
-            &mut self.rng,
-        );
-    }
-
-    /// reduce y position of branches, weighted by dist to 0,0 xz.
+    /// Droop branches downward, scaled by horizontal distance from the root
+    /// so the canopy sags more than the trunk.
     pub fn post_process_gravity(&mut self, gravity: f32) {
-        let plane_half_size = self.get_bound_square_half();
+        let plane_half_size = self.bounding_square_half();
         for branch in self.branches.iter_mut() {
-            // branch.
-            let branch_plane = vec2(branch.pos.x, branch.pos.z);
-            let root = Vec2::ZERO;
-            let dist_to_root = branch_plane.distance(root);
-
+            let dist_to_root = vec2(branch.pos.x, branch.pos.z).distance(Vec2::ZERO);
             let weight = dist_to_root / plane_half_size;
             branch.pos.y -= weight * gravity;
         }
     }
 
-    /// rotate branch x,z positions around origin: 0,0
+    /// Twist branches around the Y axis, more strongly far from the root and
+    /// higher up, for a spiralling canopy.
     pub fn post_process_spin(&mut self, spin_amount: f32) {
-        let plane_half_size = self.get_bound_square_half();
+        let plane_half_size = self.bounding_square_half();
         for branch in self.branches.iter_mut() {
             let branch_xz = vec2(branch.pos.x, branch.pos.z);
-            let root = Vec2::ZERO;
-            let dist_to_root = branch_xz.distance(root);
+            let dist_to_root = branch_xz.distance(Vec2::ZERO);
             let weight = dist_to_root / plane_half_size;
-
             let y_weight = (branch.pos.y * 0.3).cos() * 0.5 + 0.5;
-
             let new_xz = rotate_point(branch_xz, spin_amount * weight * y_weight);
             branch.pos.x = new_xz.x;
             branch.pos.z = new_xz.y;
         }
-    }
-
-    /// returns (distance, index of branch)
-    pub fn distance_to_branch(&self, pos: Vec3) -> (f32, usize) {
-        let mut closest = f32::MAX;
-        let mut index = 0;
-        for (i, branch) in self.branches.iter().enumerate() {
-            let Some(parent_index) = branch.parent_index else {
-                continue;
-            };
-
-            let d = dist_to_line(pos, self.branches[parent_index].pos, branch.pos);
-            if d < closest {
-                closest = d;
-                index = i;
-            }
-        }
-        (closest, index)
     }
 
     fn spawn_root_branch(&mut self, spawn_root_branch: &SpawnRootBranch) {

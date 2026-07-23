@@ -1,10 +1,7 @@
 use ahash::HashMap;
 
 #[cfg(feature = "bevy")]
-use bevy::{
-    ecs::resource::Resource,
-    log::{error, warn},
-};
+use bevy::ecs::resource::Resource;
 use glam::{IVec3, Vec3, ivec3, vec3};
 use rand::{RngExt, SeedableRng, seq::IndexedRandom};
 
@@ -17,20 +14,42 @@ use crate::{
 };
 const EPSILON: f32 = 0.0001;
 
-/// the raw voxel representation, that will be sent back to library-implementor
-#[derive(Eq, PartialEq, Copy, Clone, Debug, Default)]
+/// Logs through bevy when the `bevy` feature is on, otherwise to stderr —
+/// so the crate still builds (and reports) without bevy.
+macro_rules! log_error {
+    ($($t:tt)*) => {{
+        #[cfg(feature = "bevy")]
+        { bevy::log::error!($($t)*); }
+        #[cfg(not(feature = "bevy"))]
+        { eprintln!($($t)*); }
+    }};
+}
+
+macro_rules! log_warn {
+    ($($t:tt)*) => {{
+        #[cfg(feature = "bevy")]
+        { bevy::log::warn!($($t)*); }
+        #[cfg(not(feature = "bevy"))]
+        { eprintln!($($t)*); }
+    }};
+}
+
+/// Opaque, copyable handle for a voxel type within a single
+/// [`VoxelDefinitions`] registry. Values come from
+/// [`VoxelDefinitions::id_from_name`].
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VoxelId(pub u32);
 
-/// voxel name mapped to VoxelId
+/// A voxel reference that can be written in assets *before* the voxel
+/// registry exists. `name` is resolved to `id` by
+/// [`VoxelDefinitions::id_from_name`] once a registry is available.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct VoxelMapping {
-    /// startup, mapping value to find voxel type
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub name: String,
-    /// runtime friendly voxel id
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub id: VoxelId,
 }
 
@@ -40,6 +59,9 @@ impl VoxelMapping {
     }
 }
 
+/// Registry mapping voxel names (as authored in assets) to runtime [`VoxelId`]s.
+/// Built by the host application; voxelize output is only meaningful once every
+/// referenced name has been resolved against one of these.
 #[derive(Default)]
 #[cfg_attr(feature = "bevy", derive(Resource))]
 pub struct VoxelDefinitions(pub HashMap<String, VoxelId>);
@@ -50,8 +72,7 @@ impl VoxelDefinitions {
     }
     pub fn id_from_name(&self, name: &str) -> VoxelId {
         self.0.get(name).copied().unwrap_or_else(|| {
-            #[cfg(feature = "bevy")]
-            warn!("no named voxel: '{}' in VoxelDefinitions", name);
+            log_warn!("no named voxel: '{}' in VoxelDefinitions", name);
             VoxelId(0u32)
         })
     }
@@ -60,8 +81,8 @@ impl VoxelDefinitions {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RandomVoxelEntry {
-    weight: i32,
-    voxel_mapping: VoxelMapping,
+    pub weight: i32,
+    pub voxel_mapping: VoxelMapping,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -73,7 +94,7 @@ pub enum Axis {
     Z,
 }
 
-/// adds offset unto gradient coloring, to add variation
+/// Perturbs the gradient sampling position to break up banding.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafGradientModulation {
@@ -96,13 +117,12 @@ impl Default for LeafGradientSamplingMethod {
     }
 }
 
-/// describes how to color voxels
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LeafGradientSettings {
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub sampling_method: LeafGradientSamplingMethod,
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub modulation: Option<LeafGradientModulation>,
     pub steps: Vec<LeafGradientEntry>,
 }
@@ -110,19 +130,18 @@ pub struct LeafGradientSettings {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LeafGradientEntry {
+    /// Upper threshold (0..1) at which this colour stops applying.
     pub percent: f32,
     pub voxel_mapping: VoxelMapping,
 }
 
-/// entry for selecting a LeafDecoration
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct WeightedDecorationEntry {
-    weight: u32,
-    decoration: LeafDecoration,
+    pub weight: u32,
+    pub decoration: LeafDecoration,
 }
 
-/// specifies what LeafDecoration to select
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum DecorationSelector {
@@ -160,7 +179,6 @@ impl DecorationSelector {
     }
 }
 
-/// specifies how to color voxels
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafDecoration {
@@ -311,43 +329,6 @@ pub struct ConiferWhorlShape {
     pub whorl_spacing: f32,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum BranchSizeSetting {
-    Value { size: f32 },
-    Generation { sizes: Vec<f32> },
-}
-
-impl Default for BranchSizeSetting {
-    fn default() -> Self {
-        Self::Value { size: 1.0 }
-    }
-}
-
-pub fn drop_id(voxels: &mut Vec<(IVec3, VoxelId)>, voxel_id: VoxelId, procentage: f32, seed: u64) {
-    let mut branch_indices = voxels
-        .iter()
-        .enumerate()
-        .filter(|(_i, (_p, v))| v == &voxel_id)
-        .map(|(i, _)| i)
-        .collect::<Vec<_>>();
-
-    let to_drop = (branch_indices.len() as f32 * procentage) as usize;
-    let mut to = Vec::with_capacity(to_drop);
-    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
-    for _ in 0..to_drop {
-        let branch_indicies_i = rng.random_range(0..branch_indices.len());
-        let index = branch_indices[branch_indicies_i];
-        branch_indices.remove(branch_indicies_i);
-        to.push(index);
-    }
-    to.sort();
-    to.reverse();
-    for i in to.into_iter() {
-        voxels.remove(i);
-    }
-}
-
 /// Largest leaf radius across all leaf groups, for bounding-box padding.
 fn leaf_padding(generator: &ShrubberyGenerator) -> i32 {
     generator
@@ -365,21 +346,29 @@ fn leaf_padding(generator: &ShrubberyGenerator) -> i32 {
 type BranchMap = ahash::HashMap<IVec3, (f32, VoxelId)>;
 type VoxelMap = ahash::HashMap<IVec3, VoxelId>;
 
-pub fn voxelize(shrubbery: &mut ShrubberyGenerator, tree_seed: u64) -> VoxelMap {
-    let (mut min_bounds, mut max_bounds) = shrubbery.get_bounds();
-    let padding = leaf_padding(shrubbery);
-    min_bounds -= IVec3::splat(padding);
-    max_bounds += IVec3::splat(padding);
+impl ShrubberyGenerator {
+    /// Rasterize the generated branches and leaves into a flat set of voxels.
+    ///
+    /// Each voxel is `(grid_position, voxel_id)`. The grid is padded by the
+    /// largest leaf radius so leaves near the edge are never clipped.
+    /// Determinism is anchored to [`ShrubberyGenerator::seed`]; the same seed
+    /// and recipe always produce the same grid.
+    pub fn voxelize(&mut self) -> Vec<(IVec3, VoxelId)> {
+        let (mut min_bounds, mut max_bounds) = self.bounds();
+        let padding = leaf_padding(self);
+        min_bounds -= IVec3::splat(padding);
+        max_bounds += IVec3::splat(padding);
 
-    let mut voxels = BranchMap::default();
-    process_branches(shrubbery, &mut voxels, tree_seed);
-    let mut voxel_map: VoxelMap = voxels
-        .into_iter()
-        .map(|(pos, (_dist, voxel_id))| (pos, voxel_id))
-        .collect();
-    process_shapes(shrubbery, &mut voxel_map, tree_seed);
+        let mut voxels = BranchMap::default();
+        process_branches(self, &mut voxels);
+        let mut voxel_map: VoxelMap = voxels
+            .into_iter()
+            .map(|(pos, (_dist, voxel_id))| (pos, voxel_id))
+            .collect();
+        process_shapes(self, &mut voxel_map);
 
-    voxel_map
+        voxel_map.into_iter().collect()
+    }
 }
 
 fn process_sphere_leaves(
@@ -388,7 +377,6 @@ fn process_sphere_leaves(
     leaf_index: usize,
     leaf_decoration: &LeafDecoration,
     radius: &ValueOrRangeF32,
-    tree_seed: u64,
 ) {
     for (branch_index, branch) in generator
         .branches
@@ -396,7 +384,7 @@ fn process_sphere_leaves(
         .enumerate()
         .filter(|(_, b)| b.leaf_group == Some(leaf_index))
     {
-        let mut rng = ChaCha8Rng::seed_from_u64(branch_index as u64 + tree_seed);
+        let mut rng = ChaCha8Rng::seed_from_u64(branch_index as u64 + generator.seed);
         let r = radius.get(&mut rng);
         let ri = r.ceil() as i32 + 1;
         let iteration_percent = branch.iteration as f32 / branch.iteration_total as f32;
@@ -409,12 +397,13 @@ fn process_sphere_leaves(
                     let offset = vec3(dx as f32, dy as f32, dz as f32);
                     if offset.length_squared() > (r + EPSILON).powi(2) {
                         continue;
-                    } // no sqrt
+                    }
                     let world_f32 = branch.pos + offset;
                     let world_i32 = world_f32.floor().as_ivec3();
+                    // First branch to claim a cell wins; later leaves don't overwrite.
                     if out.contains_key(&world_i32) {
                         continue;
-                    } // preserves "first branch wins"
+                    }
 
                     out.insert(
                         world_i32,
@@ -438,7 +427,6 @@ fn voxelize_star_leaves(
     star: &StarLeafShape,
     decoration: &LeafDecoration,
     voxels: &mut VoxelMap,
-    tree_seed: u64,
 ) {
     for (layer_index, branch) in generator
         .branches
@@ -446,7 +434,7 @@ fn voxelize_star_leaves(
         .filter(|b| b.leaf_group == Some(group_idx))
         .enumerate()
     {
-        let mut rng = ChaCha8Rng::seed_from_u64(layer_index as u64 + tree_seed);
+        let mut rng = ChaCha8Rng::seed_from_u64(layer_index as u64 + generator.seed);
         let arm_length = star.arm_length.get(&mut rng);
 
         let iteration_percent = branch.iteration as f32 / branch.iteration_total as f32;
@@ -472,13 +460,13 @@ fn voxelize_star_leaves(
     }
 }
 
-fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap, tree_seed: u64) {
+fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap) {
     for (leaf_index, (leaf_shape, leaf_decoration_selector)) in
         shrubbery.leaf_groups.iter().enumerate()
     {
         let leaf_decoration = leaf_decoration_selector.get_leaf_decoration(&mut shrubbery.rng);
         let Some(leaf_decoration) = leaf_decoration else {
-            error!("leaf decoration is None");
+            log_error!("leaf decoration is None");
             continue;
         };
 
@@ -490,7 +478,6 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap, tre
                     leaf_index,
                     leaf_decoration,
                     radius,
-                    tree_seed,
                 );
             }
             LeafShape::ConiferWhorl(conifer_whorl_shape) => {
@@ -500,7 +487,6 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap, tre
                     conifer_whorl_shape,
                     leaf_decoration,
                     voxels,
-                    tree_seed,
                 );
             }
             LeafShape::StarLeaf(star_leaf_shape) => {
@@ -510,14 +496,13 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap, tre
                     star_leaf_shape,
                     leaf_decoration,
                     voxels,
-                    tree_seed,
                 );
             }
         }
     }
 }
 
-fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap, tree_seed: u64) {
+fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap) {
     for (branch_index, branch) in shrubbery.branches.iter().enumerate() {
         let Some(parent_index) = branch.parent_index else {
             continue;
@@ -525,21 +510,20 @@ fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap, 
         let start_pos = shrubbery.branches[parent_index].pos;
         let end_pos = branch.pos;
 
-        // find branch bounds
         let min = start_pos.min(end_pos) - Vec3::splat(branch.thickness + 1.0);
         let max = start_pos.max(end_pos) + Vec3::splat(branch.thickness + 1.0);
         let (min, max) = (min.floor().as_ivec3(), max.ceil().as_ivec3());
 
         let Some(group_id) = branch.decoration_group else {
-            panic!("no decoration group");
+            panic!("branch has no decoration group");
         };
         let decoration_selector = shrubbery
             .branch_decorations
             .get(group_id)
-            .expect("branch decor");
+            .expect("decoration group exists");
 
         let Some(decoration) = decoration_selector.get_leaf_decoration(&mut shrubbery.rng) else {
-            panic!("no set leaf decoration");
+            panic!("decoration selector resolved to None");
         };
 
         for x in min.x..=max.x {
@@ -552,11 +536,10 @@ fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap, 
                         continue;
                     }
                     let mut branch_rng =
-                        rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64 + tree_seed);
+                        rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64 + shrubbery.seed);
 
-                    let mut iteration_percent =
-                        branch.iteration as f32 / branch.iteration_total as f32;
-                    iteration_percent = iteration_percent.clamp(0.0, 1.0);
+                    let iteration_percent =
+                        (branch.iteration as f32 / branch.iteration_total as f32).clamp(0.0, 1.0);
                     let voxel_id = decoration.get_voxel_id(
                         &mut branch_rng,
                         sample,
@@ -614,14 +597,12 @@ fn voxelize_conifer_whorls(
     whorl: &ConiferWhorlShape,
     decoration: &LeafDecoration,
     voxels: &mut VoxelMap,
-    tree_seed: u64,
 ) {
     struct WhorlInfo {
         layer_index: u32,
         pos: Vec3,
         dir: Vec3,
         taper_t: f32,
-        // if someone uses LeafDecorationSamplingMethod::IterationPercent
         iteration_percent: f32,
     }
 
@@ -679,7 +660,7 @@ fn voxelize_conifer_whorls(
     }
 
     for info in &whorl_infos {
-        let mut seed_rng = ChaCha8Rng::seed_from_u64(info.layer_index as u64 + tree_seed);
+        let mut seed_rng = ChaCha8Rng::seed_from_u64(info.layer_index as u64 + generator.seed);
         let length_jitter = if whorl.length_jitter_ratio > 0.0 {
             let max_j = whorl.max_branch_length * whorl.length_jitter_ratio;
             seed_rng.random_range(-max_j..=max_j)
@@ -720,8 +701,7 @@ struct ArmShapeParams {
     thickness: u32,
     droop: f32,
     tip_lift: f32,
-    // if Some: set rotation based upon layer index
-    // if none: RANDOMIZE completely
+    /// `Some(step)` rotates each layer by `layer_index * step`; `None` randomizes.
     rotation_step: Option<f32>,
 }
 
@@ -750,18 +730,15 @@ fn emit_star_arms(
     let cross_b = Vec3::new(-arm_b.z, 0.0, arm_b.x).normalize_or(Vec3::X);
 
     let arm_length = params.arm_length;
-    let arm_width = params.arm_width;
     let search_radius = arm_length.ceil() as i32;
 
-    // --- true vertical extent, replacing the old arm_length-as-Y-bounds bug ---
-    // y_offset(d) = -d*droop + (d/arm_length)^2 * tip_lift, for d in [0, arm_length]
-    let y_at_0 = 0.0f32;
+    // Vertical extent of the arm arc: y(d) = -d*droop + (d/arm_length)^2 * tip_lift.
     let y_at_tip = -arm_length * params.droop + params.tip_lift;
-    let mut y_min = y_at_0.min(y_at_tip);
-    let mut y_max = y_at_0.max(y_at_tip);
+    let mut y_min = y_at_tip.min(0.0);
+    let mut y_max = y_at_tip.max(0.0);
 
-    // the term is quadratic in d, so an interior extremum is possible when
-    // tip_lift and droop have opposing effects — check it explicitly.
+    // The arc is quadratic in d, so an interior extremum exists when droop and
+    // tip_lift pull in opposite directions.
     if params.tip_lift.abs() > EPSILON {
         let d_crit = params.droop * arm_length * arm_length / (2.0 * params.tip_lift);
         if d_crit > 0.0 && d_crit < arm_length {
@@ -772,7 +749,6 @@ fn emit_star_arms(
         }
     }
 
-    // thickness stacks voxels downward from y_offset
     let thickness_extra = params.thickness.saturating_sub(1) as f32;
     let bounds_min = vec3(
         params.pos.x - arm_length,
@@ -796,9 +772,9 @@ fn emit_star_arms(
             let proj_b_cross = offset_h.dot(cross_b);
 
             let progress_a = proj_a_main.abs() / arm_length;
-            let allowed_w_a = arm_width * (1.0 - progress_a * params.branch_sharpness);
+            let allowed_w_a = params.arm_width * (1.0 - progress_a * params.branch_sharpness);
             let progress_b = proj_b_main.abs() / arm_length;
-            let allowed_w_b = arm_width * (1.0 - progress_b * params.branch_sharpness);
+            let allowed_w_b = params.arm_width * (1.0 - progress_b * params.branch_sharpness);
 
             let in_arm_a =
                 proj_a_main.abs() <= arm_length && proj_a_cross.abs() <= allowed_w_a.max(0.5);

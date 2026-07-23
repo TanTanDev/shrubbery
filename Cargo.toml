@@ -6,7 +6,7 @@ edition = "2024"
 [features]
 default = ["serde", "bevy"]
 serde = ["dep:serde", "glam/serde"]
-bevy = ["dep:bevy", "dep:ron"]
+bevy = ["dep:bevy", "dep:ron", "serde"]
 
 [dependencies]
 glam = "0.33"
@@ -17,7 +17,7 @@ ahash = "0.8.12"
 
 ron = { version = "0.12", optional = true }
 bevy = {version = "0.17.3", features = ["file_watcher"], optional = true}
-serde = { version = "1.0", default-features = false, features = ["derive"], optional = true, }
+serde = { version = "1.0", features = ["derive"], optional = true }
 
 [dev-dependencies]
 criterion = {version="0.8", features = ["html_reports"]}
