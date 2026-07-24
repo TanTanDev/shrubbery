@@ -1,0 +1,56 @@
+[
+    (
+        name: "bark",
+        red: 0.4,
+        green: 0.165,
+        blue: 0.165,
+    ),
+    (
+        name: "leaf_bright",
+        red: 0.0,
+        green: 0.7,
+        blue: 0.0,
+    ),
+    (
+        name: "leaf_dark",
+        red: 0.0,
+        green: 0.3,
+        blue: 0.0,
+    ),
+    (
+        name: "leaf_mid",
+        red: 0.0,
+        green: 0.5,
+        blue: 0.0,
+    ),
+    (
+        name: "bark_bright",
+        red: 0.647,
+        green: 0.165,
+        blue: 0.165,
+    ),
+    (
+        name: "bark_dark",
+        red: 0.3,
+        green: 0.165,
+        blue: 0.165,
+    ),
+    (
+        name: "leaf_dark_green_blue",
+        red: 0.62236434,
+        green: 0.56802934,
+        blue: 0.2066433,
+    ),
+    (
+        name: "leaf_green",
+        red: 0.23811513,
+        green: 0.57138246,
+        blue: 0.6420252,
+    ),
+    (
+        name: "leaf_yellow",
+        red: 0.40241033,
+        green: 0.65774244,
+        blue: 0.36324883,
+    ),
+]
