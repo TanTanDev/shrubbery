@@ -28,7 +28,6 @@ pub struct ShrubberyDebugDrawPlugin;
 
 impl Plugin for ShrubberyDebugDrawPlugin {
     fn build(&self, app: &mut App) {
-        info!("ShrubberyDebugDrawPlugin added");
         app.init_gizmo_group::<ShrubberyDebugGizmoGroup>();
         app.init_resource::<ShrubberyDebugConfig>();
         app.add_systems(Startup, configure_gizmo_group);
@@ -300,18 +299,12 @@ fn toggle_debug_config(
 ) {
     if keyboard.just_pressed(config.toggle_gizmos_key) {
         config.render_gizmos = !config.render_gizmos;
-        info!("debug draw: render_gizmos = {}", config.render_gizmos);
     }
     if keyboard.just_pressed(config.toggle_attractors_key) {
         config.render_attractors = !config.render_attractors;
-        info!(
-            "debug draw: render_attractors = {}",
-            config.render_attractors
-        );
     }
     if keyboard.just_pressed(config.toggle_branches_key) {
         config.render_branches = !config.render_branches;
-        info!("debug draw: render_branches = {}", config.render_branches);
     }
 }
 
@@ -324,10 +317,6 @@ fn refresh_debug_caches(
 ) {
     if *last_entity_count != query.iter().len() {
         *last_entity_count = query.iter().len();
-        info!(
-            "debug draw: {} entities with ShrubberyDebugDraw",
-            *last_entity_count
-        );
     }
     // asset ids that (re)loaded this frame, e.g. hot-reloaded .ron files
     let mut asset_updates = HashSet::default();
@@ -344,32 +333,10 @@ fn refresh_debug_caches(
             continue;
         }
         let Some(asset) = assets.get(&draw.asset) else {
-            warn!(
-                "debug draw: asset {:?} for entity {entity} is not loaded yet, \
-                 will retry when it changes or loads",
-                draw.asset.id()
-            );
+            // the asset is not loaded for the entity yet, will retry when it changes or loads
             continue;
         };
         let cache = compute_debug_cache(draw.seed, asset);
-        info!(
-            "debug draw: rebuilt cache for {entity} (seed {}): {} root branches{:?}, \
-             {} attractor volumes{:?}, {} branch segments",
-            draw.seed,
-            cache.root_branches.len(),
-            cache.root_branches.first().map(|r| r.pos),
-            cache.attractor_volumes.len(),
-            cache.attractor_volumes.first().map(|v| (
-                v.center,
-                v.half_extents * 2.0,
-                v.attractors.len()
-            )),
-            cache.branches.len(),
-        );
-        for (step_index, name, count) in &cache.branch_legend {
-            let (color_name, _) = STEP_PALETTE[*step_index % STEP_PALETTE.len()];
-            info!("debug draw:   step #{step_index} {name}: {count} branch arrows ({color_name})");
-        }
         commands.entity(entity).insert(cache);
     }
 }
@@ -388,11 +355,6 @@ fn draw_debug_gizmos(
         query.iter().len(),
     );
     if *last_state != Some(state) {
-        info!(
-            "debug draw: drawing frame with render_gizmos={}, render_attractors={}, \
-             render_branches={}, entities with cache={}",
-            state.0, state.1, state.2, state.3
-        );
         *last_state = Some(state);
     }
     if !config.render_gizmos {

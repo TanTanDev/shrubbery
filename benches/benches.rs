@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rand::RngExt;
-use shrubbery::{prelude::ShrubberyGenerator, ShrubberySettings};
+use shrubbery::prelude::{ShrubberyGenerator, ShrubberySettings};
 use std::hint::black_box;
 
 #[inline]
