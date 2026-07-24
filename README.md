@@ -1,5 +1,6 @@
 # shrubbery
 <img src="shrubbery_logo.png" width="200" />
+
 rust library: Space colonization implementation, for generating trees / shrubbery, with built in voxelization utility.
 
 ### Screenshot example: voxel.
@@ -10,37 +11,51 @@ right: debug representation of branches + attractors renders as yellow dots.
 
 ## Example code
 ```rs
-let mut shrubbery = Shrubbery::new(
-    vec3(0., 0., 0.), // rot position
-    vec3(0., 1., 0.), // initial growth dir
-    AlgorithmSettings {
-        branch_len: 2.0,
-        leaf_attraction_dist: 6.0,
-		..Default::default()
-    },
-    AttractorGeneratorSettings::default(),
-);
+use shrubbery::prelude::*;
 
-// spawn particles for tree to grow into
-shrubbery.spawn_attractors_from_shape(
-    vec3(0., 5. + 8.0, 0.),
-    BoxShape {
-        x: 15.0,
-        y: 10.0,
-        z: 15.,
-    },
-);
+// Settings describe the build steps; load from RON (see assets/shrubbery/)
+// or construct them in code.
+let settings: ShrubberySettings =
+    ron::de::from_str(&std::fs::read_to_string("oak.shrubbery.ron")?)?;
 
-// keep spawning root branches until attractors can be found
-shrubbery.build_trunk();
+// Generation is deterministic per seed.
+let mut generator = ShrubberyGenerator::generate(42, &settings);
 
-// grow tree 8 times
-(0..8).for_each(|_|shrubbery.grow());
-
-// make data for the tree as a voxel
-let mut voxels = voxelize(shrubbery, VoxelizeSettings::default());
-
+// Voxelize into (IVec3 grid position, VoxelId) pairs.
+let voxels = generator.voxelize();
 ```
+
+Runnable demos live in `examples/` (e.g. `cargo run --example bevy`).
+
+## Feature flags
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `serde` | ✓ | Serialization for settings and voxel definitions (RON, etc.) |
+| `bevy` | ✓ | Bevy integration: `.shrubbery.ron` asset loader, plugin, debug draw. Implies `serde` and pulls in `ron` |
+
+Minimal build: `cargo add shrubbery --no-default-features`.
+
+## Testing
+
+```sh
+cargo test
+```
+
+Determinism is verified with golden hashes: `tests/golden_hashes/*.golden.ron`
+record the expected voxel-output hash for every asset in `assets/shrubbery/`
+at a fixed set of seeds. The tests discover assets automatically — there is no
+hard-coded list.
+
+If you **intentionally change generation behavior** or **add a new asset**,
+the golden hash test will fail until you regenerate and commit the goldens:
+
+```sh
+cargo test --test generate_golden_hashes -- --ignored --nocapture
+```
+
+Review the resulting diff carefully — a changed golden hash means the voxel
+output for that asset and seed changed.
 
 ## License
 
