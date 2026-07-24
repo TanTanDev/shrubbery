@@ -1,5 +1,3 @@
-// Tree 5: palm tree.
-// Strong gravity lean, thin tall trunk, crown fans out, coconuts + fronds.
 (
     build_steps: [
         SpawnRootBranch((
@@ -82,12 +80,10 @@
                 z_rotation_max: Range(5, 7),
             ),
         )),
-        // Strong lean for visible palm curve
         GrowDirection((
             times: Value(6),
             trunk_growth_direction: GravityLean(strength: 0.2),
             branch_len: Range(2.0, 8.0),
-            // branch_thickness: ValueOrRange(Value(2.0)),
             branch_thickness: IterationScale (
                 min: Value(3.0),
                 max: Value(1.5),

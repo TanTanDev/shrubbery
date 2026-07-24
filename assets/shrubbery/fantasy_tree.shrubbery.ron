@@ -1,6 +1,3 @@
-// Tree 4: weeping tree.
-// Trunk curves hard with gravity. Sub-canopy pulled up from tips.
-// Heavy droop whorls hang down from the sub-canopy branches.
 (
     build_steps: [
         SpawnRootBranch((
@@ -12,7 +9,6 @@
                 z_rotation_max: Range(3, 4),
             ),
         )),
-        // Stronger gravity lean for a visible curve
         GrowDirection((
             assign_id: AssignId(1),
             times: Value(9),
@@ -20,7 +16,6 @@
                 ignore_root: false,
                 ignore_shapes: true,
                 id_filter: All,
-                // iteration_filter: All,
                 iteration_filter: All,
             ),
             trunk_growth_direction: GravityLean(strength: 0.35),
@@ -38,7 +33,6 @@
                     LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "bark_bright")),
                 ],
             ))),
-            // decoration: Single(VoxelMapping(name: "leaf_bright")),
         )),
         GrowDirection((
             times: Value(1),
@@ -71,11 +65,11 @@
             filter: BranchFilter(
                 ignore_shapes: true,
                 id_filter: Target(1),
-                iteration_filter: All,
+                iteration_filter: Greater(3),
             ),
             offset_distance: 20.0,
             offset_dir: WorldDown,
-            shape: Cube((size_x: 10.0, size_y: 1.0, size_z: 10.0)),
+            shape: Cube((size_x: 15.0, size_y: 1.0, size_z: 15.0)),
             attractor_spacing: AttractorSpacing(attractor_spacing: 5.0, jitter_ratio: 1.0),
         )),
         GrowToAttractors((

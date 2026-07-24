@@ -53,6 +53,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(ShrubberyPlugin)
+        .add_plugins(ShrubberyDebugDrawPlugin)
         .add_plugins(NoCameraPlayerPlugin)
         .insert_resource(MovementSettings {
             sensitivity: 0.00015,
@@ -203,7 +204,9 @@ fn spawn_ui(mut commands: Commands) {
         })
         .id();
     commands.spawn((
-        Text::new("tap: R     to reset\ntap: N     to open next tree"),
+        Text::new(
+            "tap: R     to reset\ntap: N     to open next tree\ntap: G     toggle gizmos\ntap: H     toggle attractors\ntap: B     toggle branches",
+        ),
         Node { ..default() },
         ChildOf(container),
     ));
@@ -320,7 +323,13 @@ fn spawn_tree(mut commands: Commands, tree_handles: Option<Res<TreeAssetHandles>
     commands.spawn((
         Transform::default(),
         Visibility::Visible,
-        Tree { tree_handle },
+        Tree {
+            tree_handle: tree_handle.clone(),
+        },
+        ShrubberyDebugDraw {
+            asset: tree_handle,
+            seed: 0,
+        },
     ));
 }
 
@@ -331,7 +340,7 @@ fn rebuild_tree_on_update(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
-    tree_entities: Query<(Entity, &Tree)>,
+    mut tree_entities: Query<(Entity, &Tree, &mut ShrubberyDebugDraw)>,
     changed_tree_entities: Query<&Tree, Changed<Tree>>,
     voxel_materials: Res<VoxelMaterials>,
     tree_seed: Res<TreeSeed>,
@@ -352,12 +361,12 @@ fn rebuild_tree_on_update(
     if !rebuild_all {
         return;
     }
-    for (i, (tree_entity, tree_asset)) in tree_entities
-        .iter()
-        .filter_map(|(entity, tree)| {
+    for (i, (tree_entity, tree_handle, tree_asset, mut debug_draw)) in tree_entities
+        .iter_mut()
+        .filter_map(|(entity, tree, debug_draw)| {
             tree_assets
                 .get(&tree.tree_handle)
-                .map(|asset| (entity, asset))
+                .map(|asset| (entity, tree.tree_handle.clone(), asset, debug_draw))
         })
         .enumerate()
     {
@@ -365,6 +374,11 @@ fn rebuild_tree_on_update(
         commands.entity(tree_entity).despawn_children();
 
         let unique_tree_seed = tree_seed.0 + i as u64;
+        // keep the debug overlay in sync with the regenerated tree
+        if debug_draw.seed != unique_tree_seed || debug_draw.asset != tree_handle {
+            debug_draw.seed = unique_tree_seed;
+            debug_draw.asset = tree_handle;
+        }
         let mut generator = ShrubberyGenerator::generate(unique_tree_seed, tree_asset);
         let voxels = generator.voxelize();
 

@@ -1,5 +1,3 @@
-// Oak tree — branching trunk, large sphere-leaf canopy.
-// SpawnLeaves runs at the end so only the final tips get spheres.
 (
     build_steps: [
         SpawnRootBranch((
@@ -16,7 +14,6 @@
             times: Value(6),
             trunk_growth_direction: GravityLean(strength: 0.3),
             branch_len: Value(4.0),
-            // branch_thickness: ValueOrRange(Value(1.0)),
             branch_thickness: IterationScale (
                 min: Value(3.0),
                 max: Value(1.0),
@@ -30,25 +27,27 @@
             offset_distance: 0.0,
             offset_dir: WorldUp,
             shape: Cube((size_x: 25.0, size_y: 20.0, size_z: 25.0)),
-            attractor_spacing: AttractorSpacing(attractor_spacing: 2.0, jitter_ratio: 1.0),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 6.0, jitter_ratio: 1.0),
             filter: BranchFilter(
                 iteration_filter: Last,
             ),
         )),
         GrowToAttractors((
-            times: Value(5),
+            times: Value(3),
             branch_len: Value(8.0),
             kill_distance: 5.0,
-            leaf_attraction_dist: 6.0,
+            leaf_attraction_dist: 9.0,
             branch_thickness: ValueOrRange(Value(1.0)),
             decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
-                iteration_filter: Last,
                 id_filter: Target(1),
             ),
         )),
         SpawnLeaves((
             shape: Sphere(radius: Value(6.0)),
+            filter: BranchFilter(
+                iteration_filter: Greater(0),
+            ),
             decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.1)),
                 steps: [

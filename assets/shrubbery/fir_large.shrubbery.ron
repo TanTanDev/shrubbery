@@ -1,5 +1,3 @@
-// Tree 2: classic upright conifer, whorls drooping down.
-// Tight narrow attractor cone → layers taper from wide base to sharp apex.
 (
     build_steps: [
         SpawnRootBranch((

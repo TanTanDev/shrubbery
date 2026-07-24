@@ -1,5 +1,3 @@
-// Oak tree — branching trunk, large sphere-leaf canopy.
-// SpawnLeaves runs at the end so only the final tips get spheres.
 (
     build_steps: [
         SpawnRootBranch((
@@ -28,10 +26,10 @@
             ),
         )),
         SpawnAttractorOnBranches((
-            offset_distance: 3.0,
-            offset_dir: WorldDown,
-            shape: Cube((size_x: 12.0, size_y: 3.0, size_z: 12.0)),
-            attractor_spacing: AttractorSpacing(attractor_spacing: 3.0, jitter_ratio: 1.0),
+            offset_distance: 6.0,
+            offset_dir: WorldUp,
+            shape: Cube((size_x: 28.0, size_y: 4.0, size_z: 28.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 8.0, jitter_ratio: 1.0),
             filter: BranchFilter(
                 id_filter: Target(0),
                 iteration_filter: Lower(4),
@@ -40,10 +38,10 @@
         GrowToAttractors((
             chance: Chance(30.0),
             assign_id: AssignId(3),
-            times: Value(2),
-            branch_len: Value(7.0),
+            times: Value(3),
+            branch_len: Value(6.0),
             kill_distance: 5.0,
-            leaf_attraction_dist: 6.0,
+            leaf_attraction_dist: 9.0,
             branch_thickness: ValueOrRange(Value(1.3)),
             decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
@@ -53,10 +51,10 @@
         )),
         ClearAttractors,
         SpawnAttractorOnBranches((
-            offset_distance: 0.0,
+            offset_distance: 1.0,
             offset_dir: WorldDown,
-            shape: Cube((size_x: 35.0, size_y: 20.0, size_z: 35.0)),
-            attractor_spacing: AttractorSpacing(attractor_spacing: 3.0, jitter_ratio: 1.0),
+            shape: Cube((size_x: 50.0, size_y: 35.0, size_z: 50.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 9.0, jitter_ratio: 1.0),
             filter: BranchFilter(
                 id_filter: Target(0),
                 iteration_filter: Last,
@@ -64,19 +62,18 @@
         )),
         GrowToAttractors((
             assign_id: AssignId(2),
-            times: Value(5),
-            branch_len: Value(14.0),
-            kill_distance: 10.0,
-            leaf_attraction_dist: 16.0,
+            times: Value(3),
+            branch_len: Value(12.0),
+            kill_distance: 8.0,
+            leaf_attraction_dist: 15.0,
             branch_thickness: ValueOrRange(Value(2.0)),
             decoration: Value(Solid(VoxelMapping(name: "bark"))),
             filter: BranchFilter(
                 id_filter: Target(0),
-                iteration_filter: Last,
             ),
         )),
         SpawnLeaves((
-            shape: Sphere(radius: Value(7.0)),
+            shape: Sphere(radius: Range(6.0, 9.0)),
             decoration: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.1)),
                 steps: [
