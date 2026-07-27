@@ -521,7 +521,9 @@ fn sync_notice_ui(
 }
 
 fn file_modified_time(path: &Path) -> Option<SystemTime> {
-    std::fs::metadata(path).and_then(|meta| meta.modified()).ok()
+    std::fs::metadata(path)
+        .and_then(|meta| meta.modified())
+        .ok()
 }
 
 /// loads + parses a shrubbery file from disk, registers colors for any new
@@ -656,10 +658,10 @@ fn collect_voxel_names(settings: &ShrubberySettings) -> Vec<String> {
     let mut names = Vec::new();
     for step in &settings.build_steps {
         let decoration = match step {
-            ShrubberyStep::GrowDirection(step) => Some(&step.decoration),
-            ShrubberyStep::GrowToAttractors(step) => Some(&step.decoration),
-            ShrubberyStep::SpawnLeaves(step) => Some(&step.decoration),
-            ShrubberyStep::GrowRadial(step) => Some(&step.decoration),
+            ShrubberyStep::Grow(step) => Some(&step.voxel),
+            // ShrubberyStep::GrowToAttractors(step) => Some(&step.decoration),
+            ShrubberyStep::Shape(step) => Some(&step.voxel),
+            // ShrubberyStep::GrowRadial(step) => Some(&step.decoration),
             _ => None,
         };
         if let Some(decoration) = decoration {
@@ -679,7 +681,7 @@ fn collect_selector_names(selector: &DecorationSelector, names: &mut Vec<String>
             .for_each(|decoration| collect_decoration_names(decoration, names)),
         DecorationSelector::RandomWeighted(entries) => entries
             .iter()
-            .for_each(|entry| collect_decoration_names(&entry.decoration, names)),
+            .for_each(|entry| collect_decoration_names(&entry.voxel, names)),
     }
 }
 
@@ -688,11 +690,11 @@ fn collect_decoration_names(decoration: &LeafDecoration, names: &mut Vec<String>
         LeafDecoration::Solid(mapping) => names.push(mapping.name.clone()),
         LeafDecoration::RandomSolid(entries) => entries
             .iter()
-            .for_each(|entry| names.push(entry.voxel_mapping.name.clone())),
+            .for_each(|entry| names.push(entry.voxel.name.clone())),
         LeafDecoration::Gradient(settings) => settings
             .steps
             .iter()
-            .for_each(|step| names.push(step.voxel_mapping.name.clone())),
+            .for_each(|step| names.push(step.voxel.name.clone())),
     }
 }
 

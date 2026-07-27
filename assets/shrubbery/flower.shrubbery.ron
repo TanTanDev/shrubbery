@@ -1,25 +1,12 @@
 (
     build_steps: [
-        SpawnRootBranch((
-            count: 1,
-            pos: (0.0, 0.0, 0.0),
-            branch_len: Value(4.0),
-            initial_dir: Random(
-                y_rotation_range: Range(0, 360),
-                z_rotation_max: Range(1, 2),
-            ),
+        SpawnRoot(()),
+        Grow((
+            length: Value(3.0),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_dark"))),
+            filter: Filter( ignore_root: false, ),
         )),
-        GrowDirection((
-            times: Value(1),
-            trunk_growth_direction: Normal,
-            branch_len: Value(3.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
-        )),
-        SpawnLeaves((
+        Shape((
             shape: StarLeaf((
                 arm_length: Value(10.0),
                 arm_width: 3.5,
@@ -28,26 +15,24 @@
                 droop: 0.0,
                 tip_lift: 7.0,
             )),
-            decoration: Value(Gradient((
+            voxel: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
-                    LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                    (percent: 0.55, voxel: (name: "leaf_dark")),
+                    (percent: 0.75, voxel: (name: "leaf_mid")),
+                    (percent: 1.0, voxel: (name: "leaf_bright")),
                 ],
             ))),
         )),
-        GrowDirection((
+        Grow((
             times: Value(3),
-            trunk_growth_direction: GravityLean(strength: 0.6),
-            branch_len: Value(5.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
-            filter: BranchFilter(
-                ignore_shapes: false,
-            ),
+            dir: GravityLean(strength: 0.6),
+            length: Value(5.0),
+            thickness: ValueOrRange(Value(0.8)),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_dark"))),
+            filter: Filter(ignore_shapes: false, ),
         )),
-        SpawnLeaves((
+        Shape((
             shape: StarLeaf((
                 arm_length: Value(4.0),
                 arm_width: 3.5,
@@ -56,15 +41,13 @@
                 droop: 0.0,
                 tip_lift: 3.0,
             )),
-            filter: BranchFilter(
-                iteration_filter: Last,
-            ),
-            decoration: Value(Gradient((
+            filter: Filter( iteration: Last, ),
+            voxel: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
-                    LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "bark_dark")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "bark")),
-                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "bark_bright")),
+                    (percent: 0.55, voxel: (name: "bark_dark")),
+                    (percent: 0.75, voxel: (name: "bark")),
+                    (percent: 1.0, voxel: (name: "bark_bright")),
                 ],
             ))),
         )),

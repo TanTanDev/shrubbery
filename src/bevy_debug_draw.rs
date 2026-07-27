@@ -12,8 +12,8 @@ use glam::Vec3 as ShrubVec3;
 
 use crate::{
     bevy_plugin::ShrubberyAsset,
-    shape::Shape,
-    shrubbery::{BranchOffsetDir, ShrubberyGenerator, ShrubberySettings, ShrubberyStep},
+    shape::AttractorShape,
+    shrubbery::{ShrubberyGenerator, ShrubberySettings, ShrubberyStep, SpawnAttractorLocation},
 };
 
 /// The crate's glam version can diverge from bevy's; convert by value.
@@ -103,8 +103,6 @@ impl Default for ShrubberyDebugConfig {
 struct RootBranchDebug {
     pos: Vec3,
     dir: Vec3,
-    /// Display-only arrow length (the step's max branch length).
-    display_len: f32,
 }
 
 /// An attractor volume spawned by a [`ShrubberyStep::SpawnAttractors`] or
@@ -154,14 +152,14 @@ pub struct ShrubberyDebugCache {
 
 fn step_name(step: &ShrubberyStep) -> &'static str {
     match step {
-        ShrubberyStep::SpawnRootBranch(_) => "SpawnRootBranch",
-        ShrubberyStep::GrowDirection(_) => "GrowDirection",
-        ShrubberyStep::GrowRadial(_) => "GrowRadial",
-        ShrubberyStep::GrowToAttractors(_) => "GrowToAttractors",
+        ShrubberyStep::SpawnRoot(_) => "SpawnRootBranch",
+        ShrubberyStep::Grow(_) => "GrowDirection",
+        // ShrubberyStep::GrowRadial(_) => "GrowRadial",
+        // ShrubberyStep::GrowToAttractors(_) => "GrowToAttractors",
         ShrubberyStep::SpawnAttractors(_) => "SpawnAttractors",
-        ShrubberyStep::SpawnAttractorOnBranches(_) => "SpawnAttractorOnBranches",
+        // ShrubberyStep::SpawnAttractorsOnBranches(_) => "SpawnAttractorOnBranches",
         ShrubberyStep::ClearAttractors => "ClearAttractors",
-        ShrubberyStep::SpawnLeaves(_) => "SpawnLeaves",
+        ShrubberyStep::Shape(_) => "SpawnLeaves",
     }
 }
 
@@ -180,87 +178,82 @@ fn compute_debug_cache(seed: u64, settings: &ShrubberySettings) -> ShrubberyDebu
         generator.execute_step(step);
         branch_steps.extend((branch_start..generator.branches.len()).map(|i| (i, step_index)));
         match step {
-            ShrubberyStep::SpawnRootBranch(params) => {
-                let display_len = params.branch_len.max();
+            ShrubberyStep::SpawnRoot(_params) => {
                 cache
                     .root_branches
                     .extend(generator.branches[branch_start..].iter().map(|branch| {
                         RootBranchDebug {
                             pos: to_bevy_vec3(branch.pos),
                             dir: to_bevy_vec3(branch.dir),
-                            display_len,
                         }
                     }));
             }
             ShrubberyStep::SpawnAttractors(params) => {
                 let half_extents = match &params.shape {
-                    Shape::Cube(cube) => Vec3::new(cube.size_x, cube.size_y, cube.size_z) * 0.5,
-                };
-                cache.attractor_volumes.push(AttractorVolumeDebug {
-                    center: to_bevy_vec3(params.pos),
-                    half_extents,
-                    attractors: generator.attractors[attractor_start..]
-                        .iter()
-                        .map(|attractor| to_bevy_vec3(attractor.pos))
-                        .collect(),
-                });
-            }
-            ShrubberyStep::SpawnAttractorOnBranches(params) => {
-                let new_attractors = &generator.attractors[attractor_start..];
-                // empty when the step's chance roll skipped it for this seed
-                if new_attractors.is_empty() {
-                    continue;
-                }
-                // Replicate the center placement from
-                // `ShrubberyGenerator::spawn_attractors_on_branches`. The step
-                // only appends attractors, so branch state is unchanged and
-                // the origins can be selected after execution.
-                let centers: Vec<ShrubVec3> = generator
-                    .branches
-                    .iter()
-                    .filter(|branch| branch.parent_index.is_some())
-                    .filter(|branch| {
-                        params
-                            .filter
-                            .should_include_branch(branch, generator.last_known_id)
-                    })
-                    .map(|branch| {
-                        let offset_dir = match &params.offset_dir {
-                            BranchOffsetDir::BranchForward => branch.dir.normalize_or(ShrubVec3::Y),
-                            BranchOffsetDir::WorldUp => ShrubVec3::Y,
-                            BranchOffsetDir::BranchForwardFlat => {
-                                ShrubVec3::new(branch.dir.x, 0.0, branch.dir.z)
-                                    .normalize_or(ShrubVec3::X)
-                            }
-                            BranchOffsetDir::WorldDown => ShrubVec3::NEG_Y,
-                        };
-                        branch.pos + offset_dir * params.offset_distance
-                    })
-                    .collect();
-                let half_extents = match &params.shape {
-                    Shape::Cube(cube) => Vec3::new(cube.size_x, cube.size_y, cube.size_z) * 0.5,
-                };
-                // attractors are appended one volume at a time, in branch order
-                let per_volume: usize = match &params.shape {
-                    Shape::Cube(cube) => {
-                        let spacing = params.attractor_spacing.attractor_spacing.max(0.001);
-                        [cube.size_x, cube.size_y, cube.size_z]
-                            .map(|v| (v / spacing).ceil() as usize)
-                            .iter()
-                            .product()
+                    AttractorShape::Cube(cube) => {
+                        Vec3::new(cube.size_x, cube.size_y, cube.size_z) * 0.5
                     }
                 };
-                for (i, center) in centers.into_iter().enumerate() {
-                    let start = (i * per_volume).min(new_attractors.len());
-                    let end = ((i + 1) * per_volume).min(new_attractors.len());
-                    cache.attractor_volumes.push(AttractorVolumeDebug {
-                        center: to_bevy_vec3(center),
-                        half_extents,
-                        attractors: new_attractors[start..end]
+                match &params.location {
+                    SpawnAttractorLocation::Pos(pos) => {
+                        cache.attractor_volumes.push(AttractorVolumeDebug {
+                            center: to_bevy_vec3(*pos),
+                            half_extents,
+                            attractors: generator.attractors[attractor_start..]
+                                .iter()
+                                .map(|attractor| to_bevy_vec3(attractor.pos))
+                                .collect(),
+                        });
+                    }
+                    SpawnAttractorLocation::FromBranch(from_branch) => {
+                        let new_attractors = &generator.attractors[attractor_start..];
+                        // empty when the step's chance roll skipped it for this seed
+                        if new_attractors.is_empty() {
+                            continue;
+                        }
+                        // Replicate the center placement from
+                        // `ShrubberyGenerator::spawn_attractors_on_branches`. The step
+                        // only appends attractors, so branch state is unchanged and
+                        // the origins can be selected after execution.
+                        let centers: Vec<ShrubVec3> = generator
+                            .branches
                             .iter()
-                            .map(|attractor| to_bevy_vec3(attractor.pos))
-                            .collect(),
-                    });
+                            .filter(|branch| branch.parent_index.is_some())
+                            .filter(|branch| {
+                                from_branch
+                                    .filter
+                                    .should_include_branch(branch, generator.last_known_id)
+                            })
+                            .map(|branch| branch.pos + from_branch.offset.offset_dir(branch.dir))
+                            .collect();
+                        let half_extents = match &params.shape {
+                            AttractorShape::Cube(cube) => {
+                                Vec3::new(cube.size_x, cube.size_y, cube.size_z) * 0.5
+                            }
+                        };
+                        // attractors are appended one volume at a time, in branch order
+                        let per_volume: usize = match &params.shape {
+                            AttractorShape::Cube(cube) => {
+                                let spacing = params.attractor_spacing.attractor_spacing.max(0.001);
+                                [cube.size_x, cube.size_y, cube.size_z]
+                                    .map(|v| (v / spacing).ceil() as usize)
+                                    .iter()
+                                    .product()
+                            }
+                        };
+                        for (i, center) in centers.into_iter().enumerate() {
+                            let start = (i * per_volume).min(new_attractors.len());
+                            let end = ((i + 1) * per_volume).min(new_attractors.len());
+                            cache.attractor_volumes.push(AttractorVolumeDebug {
+                                center: to_bevy_vec3(center),
+                                half_extents,
+                                attractors: new_attractors[start..end]
+                                    .iter()
+                                    .map(|attractor| to_bevy_vec3(attractor.pos))
+                                    .collect(),
+                            });
+                        }
+                    }
                 }
             }
             _ => {}
@@ -365,7 +358,8 @@ fn draw_debug_gizmos(
             let pos = transform.transform_point(root.pos);
             gizmos.sphere(pos, config.root_marker_radius, css::ORANGE_RED);
             gizmos.cross(pos, config.root_marker_radius, css::ORANGE_RED);
-            gizmos.arrow(pos, pos + root.dir * root.display_len, css::LIMEGREEN);
+            let display_normal_length = 2.0;
+            gizmos.arrow(pos, pos + root.dir * display_normal_length, css::LIMEGREEN);
         }
         for volume in &cache.attractor_volumes {
             let center = transform.transform_point(volume.center);

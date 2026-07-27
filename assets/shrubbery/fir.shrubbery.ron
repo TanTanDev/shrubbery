@@ -1,34 +1,24 @@
-// classic upright conifer
 (
     build_steps: [
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            pos: (0.0, 0.0, 0.0),
-            branch_len: Value(4.0),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(4.0),
             initial_dir: Random(
                 y_rotation_range: Range(0, 360),
                 z_rotation_max: Range(0, 2),
             ),
         )),
-        GrowDirection((
-            times: Value(1),
-            trunk_growth_direction: GravityLean(strength: 0.6),
-            branch_len: Value(8.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark"))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
+        Grow((
+            dir: GravityLean(strength: 0.6),
+            length: Value(8.0),
+            filter: Filter( ignore_root: false, ),
         )),
-        GrowDirection((
+        Grow((
             times: Value(1),
-            trunk_growth_direction: GravityLean(strength: 0.3),
-            branch_len: Value(32.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark"))),
+            dir: GravityLean(strength: 0.3),
+            length: Value(32.0),
         )),
-        SpawnLeaves((
+        Shape((
             shape: ConiferWhorl((
                 max_branch_length: 14.0,
                 max_branch_width: 5.5,
@@ -42,22 +32,20 @@
                 arm_facing: Horizontal,
                 whorl_spacing: 1.7,
             )),
-            filter: BranchFilter(
-                id_filter: Target(2),
-            ),
-            decoration: RandomWeighted([
+            filter: Filter( id: Target(2), ),
+            voxel: RandomWeighted([
                 (
-                    decoration: Solid(VoxelMapping(name: "bark")),
+                    voxel: Solid(VoxelMapping(name: "bark")),
                     weight: 1,
                 ),
                 (
                     weight: 4,
-                    decoration: Gradient((
+                    voxel: Gradient((
                         modulation: Some(Random(percent_offset: 0.01)),
                         steps: [
-                            LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
-                            LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-                            LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
+                            (percent: 0.4,  voxel: (name: "leaf_bright")),
+                            (percent: 0.75, voxel: (name: "leaf_mid")),
+                            (percent: 1.0,  voxel: (name: "leaf_dark")),
                         ],
                     ))
                     

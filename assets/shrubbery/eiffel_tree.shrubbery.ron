@@ -1,105 +1,87 @@
 (
     build_steps: [
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            branch_len: Value(5.0),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
             pos: (-10.0, 0.0, -20.0),
             initial_dir: Random(
                 y_rotation_range: Range(70, 110),
                 z_rotation_max: Range(5, 7),
             ),
         )),
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            branch_len: Value(5.0),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
             pos: (10.0, 0.0, -20.0),
             initial_dir: Random(
                 y_rotation_range: Range(70, 110),
                 z_rotation_max: Range(5, 7),
             ),
         )),
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            branch_len: Value(5.0),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
             pos: (-10.0, 0.0, 20.0),
             initial_dir: Random(
                 y_rotation_range: Range(250, 270),
                 z_rotation_max: Range(5, 7),
             ),
         )),
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            branch_len: Value(5.0),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
             pos: (10.0, 0.0, 20.0),
             initial_dir: Random(
                 y_rotation_range: Range(250, 270),
                 z_rotation_max: Range(5, 7),
             ),
         )),
-        GrowDirection((
+        Grow((
             times: Value(7),
-            trunk_growth_direction: GravityLean(strength: 0.2),
-            branch_len: Range(7.5, 7.5),
-            branch_thickness: IterationScale (
-                min: Value(3.0),
-                max: Value(1.5),
-            ),
-            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
-            assign_id: AssignId(0),
+            dir: GravityLean(strength: 0.2),
+            length: Range(7.5, 7.5),
+            thickness: IterationScale (min: Value(3.0), max: Value(1.5), ),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter( ignore_root: false, ),
+            id: AssignId(0),
         )),
-        GrowDirection((
+        Grow((
             times: Value(1),
-            trunk_growth_direction: WorldPos(Vec3(0,40,0)),
-            branch_len: Range(7.5, 7.5),
-            branch_thickness: IterationScale (
-                min: Value(3.0),
-                max: Value(1.5),
-            ),
-            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
-            filter: BranchFilter(
-                iteration_filter: Last,
-            ),
-            assign_id: AssignId(0),
+            dir: WorldPos(Vec3(0,40,0)),
+            length: Range(7.5, 7.5),
+            thickness: IterationScale (min: Value(3.0), max: Value(1.5)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter( iteration: Last, ),
+            id: AssignId(0),
         )),
-        SpawnRootBranch((
-            assign_id: AssignId(1),
-            count: 1,
-            branch_len: Value(5.0),
+        SpawnRoot((
+            id: AssignId(1),
+            length: Value(5.0),
             pos: (0.0, 40.0, 0.0),
             initial_dir: Random(
                 y_rotation_range: Range(70, 110),
                 z_rotation_max: Range(5, 7),
             ),
         )),
-        SpawnRootBranch((
-            assign_id: AssignId(1),
-            count: 1,
-            branch_len: Value(5.0),
+        SpawnRoot((
+            id: AssignId(1),
+            length: Value(5.0),
             pos: (0.0, 40.0, 0.0),
             initial_dir: Random(
                 y_rotation_range: Range(70, 110),
                 z_rotation_max: Range(5, 7),
             ),
         )),
-        GrowDirection((
+        Grow((
             times: Value(1),
-            trunk_growth_direction: Target(Vec3(0,-1,0)),
-            branch_len: Value(9.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
-            assign_id: AssignId(1),
+            dir: Target(Vec3(0,-1,0)),
+            length: Value(9.0),
+            thickness: ValueOrRange(Value(1.0)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter( ignore_root: false, ),
+            id: AssignId(1),
         )),
-        SpawnLeaves((
+        Shape((
             shape: StarLeaf((
                 arm_length: Value(9.0),
                 arm_width: 3.5,
@@ -108,17 +90,13 @@
                 droop: 0.9,
                 tip_lift: 0.0,
             )),
-            filter: BranchFilter(
-                ignore_root: false,
-                id_filter: Target(1),
-                iteration_filter: All,
-            ),
-            decoration: Value(Gradient((
+            filter: Filter(ignore_root: false, id: Target(1), iteration: All, ),
+            voxel: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
-                    LeafGradientEntry(percent: 0.55,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                    (percent: 0.55,  voxel: (name: "leaf_dark")),
+                    (percent: 0.75, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
                 ],
             ))),
         )),

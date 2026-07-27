@@ -1,27 +1,21 @@
 (
     build_steps: [
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            pos: (0.0, 0.0, 0.0),
-            branch_len: Value(5.0),
+        SpawnRoot((
+            id: AssignId(0),
             initial_dir: Random(
                 y_rotation_range: Range(0, 360),
                 z_rotation_max: Range(0, 90),
             ),
         )),
-        GrowDirection((
+        Grow((
             times: Value(3),
-            trunk_growth_direction: Normal,
-            branch_len: Range(2.0, 6.0),
-            branch_thickness: IterationScale (
+            length: Range(2.0, 6.0),
+            thickness: IterationScale (
                 min: Range(4.0, 10.0),
                 max: Range(3.0, 10.0),
             ),
-            decoration: Value(Solid(VoxelMapping(name: "bark"))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
+            voxel: Value(Solid(VoxelMapping(name: "bark"))),
+            filter: Filter( ignore_root: false, ),
         )),
     ],
 )

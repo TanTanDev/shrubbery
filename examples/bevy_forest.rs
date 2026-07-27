@@ -262,7 +262,6 @@ fn setup_forest(
 fn rebuild_tree_on_update(
     mut events: MessageReader<AssetEvent<ShrubberyAsset>>,
     tree_assets: Res<Assets<ShrubberyAsset>>,
-    // tree_handle: Res<TreeAssetHandles>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,

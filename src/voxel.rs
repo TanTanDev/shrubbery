@@ -82,7 +82,7 @@ impl VoxelDefinitions {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RandomVoxelEntry {
     pub weight: i32,
-    pub voxel_mapping: VoxelMapping,
+    pub voxel: VoxelMapping,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -132,14 +132,14 @@ pub struct LeafGradientSettings {
 pub struct LeafGradientEntry {
     /// Upper threshold (0..1) at which this colour stops applying.
     pub percent: f32,
-    pub voxel_mapping: VoxelMapping,
+    pub voxel: VoxelMapping,
 }
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct WeightedDecorationEntry {
     pub weight: u32,
-    pub decoration: LeafDecoration,
+    pub voxel: LeafDecoration,
 }
 
 #[derive(Clone, Debug)]
@@ -148,6 +148,15 @@ pub enum DecorationSelector {
     Value(LeafDecoration),
     Random(Vec<LeafDecoration>),
     RandomWeighted(Vec<WeightedDecorationEntry>),
+}
+
+impl Default for DecorationSelector {
+    fn default() -> Self {
+        Self::Value(LeafDecoration::Solid(VoxelMapping {
+            name: "bark".to_string(),
+            id: VoxelId::default(),
+        }))
+    }
 }
 
 impl DecorationSelector {
@@ -162,7 +171,7 @@ impl DecorationSelector {
             DecorationSelector::RandomWeighted(weighted_decoration_entry) => {
                 weighted_decoration_entry
                     .iter_mut()
-                    .for_each(|we| we.decoration.resolve(voxel_definitions))
+                    .for_each(|we| we.voxel.resolve(voxel_definitions))
             }
         }
     }
@@ -173,7 +182,7 @@ impl DecorationSelector {
             DecorationSelector::Random(leaf_decorations) => leaf_decorations.choose(rng),
             DecorationSelector::RandomWeighted(items) => items
                 .choose_weighted(rng, |i| i.weight)
-                .map(|i| &i.decoration)
+                .map(|i| &i.voxel)
                 .ok(),
         }
     }
@@ -200,13 +209,13 @@ impl LeafDecoration {
             LeafDecoration::RandomSolid(items) => {
                 items
                     .iter_mut()
-                    .for_each(|entry| entry.voxel_mapping.resolve(voxel_definitions));
+                    .for_each(|entry| entry.voxel.resolve(voxel_definitions));
             }
             LeafDecoration::Gradient(settings) => {
                 settings
                     .steps
                     .iter_mut()
-                    .for_each(|entry| entry.voxel_mapping.resolve(voxel_definitions));
+                    .for_each(|entry| entry.voxel.resolve(voxel_definitions));
             }
         }
     }
@@ -223,7 +232,7 @@ impl LeafDecoration {
             LeafDecoration::Solid(m) => m.id,
             LeafDecoration::RandomSolid(items) => items
                 .choose_weighted(rng, |i| i.weight)
-                .map(|v| v.voxel_mapping.id)
+                .map(|v| v.voxel.id)
                 .unwrap_or_default(),
             LeafDecoration::Gradient(gradient_settings) => {
                 let mut percent = match &gradient_settings.sampling_method {
@@ -259,7 +268,7 @@ impl LeafDecoration {
                     if percent > step.percent {
                         continue;
                     }
-                    selected = step.voxel_mapping.id;
+                    selected = step.voxel.id;
                     break;
                 }
                 selected
@@ -270,7 +279,7 @@ impl LeafDecoration {
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum LeafShape {
+pub enum Shape {
     Sphere { radius: ValueOrRangeF32 },
     ConiferWhorl(ConiferWhorlShape),
     StarLeaf(StarLeafShape),
@@ -335,9 +344,9 @@ fn leaf_padding(generator: &ShrubberyGenerator) -> i32 {
         .leaf_groups
         .iter()
         .map(|(shape, _)| match shape {
-            LeafShape::Sphere { radius: r } => r.max().ceil() as i32,
-            LeafShape::ConiferWhorl(w) => w.max_branch_length.ceil() as i32,
-            LeafShape::StarLeaf(s) => s.arm_length.max().ceil() as i32,
+            Shape::Sphere { radius: r } => r.max().ceil() as i32,
+            Shape::ConiferWhorl(w) => w.max_branch_length.ceil() as i32,
+            Shape::StarLeaf(s) => s.arm_length.max().ceil() as i32,
         })
         .max()
         .unwrap_or(0)
@@ -471,16 +480,10 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap) {
         };
 
         match leaf_shape {
-            LeafShape::Sphere { radius } => {
-                process_sphere_leaves(
-                    shrubbery,
-                    voxels,
-                    leaf_index,
-                    leaf_decoration,
-                    radius,
-                );
+            Shape::Sphere { radius } => {
+                process_sphere_leaves(shrubbery, voxels, leaf_index, leaf_decoration, radius);
             }
-            LeafShape::ConiferWhorl(conifer_whorl_shape) => {
+            Shape::ConiferWhorl(conifer_whorl_shape) => {
                 voxelize_conifer_whorls(
                     shrubbery,
                     leaf_index,
@@ -489,7 +492,7 @@ fn process_shapes(shrubbery: &mut ShrubberyGenerator, voxels: &mut VoxelMap) {
                     voxels,
                 );
             }
-            LeafShape::StarLeaf(star_leaf_shape) => {
+            Shape::StarLeaf(star_leaf_shape) => {
                 voxelize_star_leaves(
                     shrubbery,
                     leaf_index,
@@ -535,8 +538,9 @@ fn process_branches(shrubbery: &mut ShrubberyGenerator, voxels: &mut BranchMap) 
                     if dist >= (branch.thickness + EPSILON).powi(2) {
                         continue;
                     }
-                    let mut branch_rng =
-                        rand_chacha::ChaCha8Rng::seed_from_u64(branch_index as u64 + shrubbery.seed);
+                    let mut branch_rng = rand_chacha::ChaCha8Rng::seed_from_u64(
+                        branch_index as u64 + shrubbery.seed,
+                    );
 
                     let iteration_percent =
                         (branch.iteration as f32 / branch.iteration_total as f32).clamp(0.0, 1.0);

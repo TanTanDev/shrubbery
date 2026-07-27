@@ -1,36 +1,27 @@
 (
     build_steps: [
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            pos: (0.0, 0.0, 0.0),
+        SpawnRoot((
+            id: AssignId(0),
             branch_len: Value(4.0),
             initial_dir: Random(
                 y_rotation_range: Range(0, 360),
                 z_rotation_max: Range(1, 2),
             ),
         )),
-        GrowDirection((
+        Grow((
             times: Value(1),
-            trunk_growth_direction: Normal,
-            branch_len: Range(10.0, 25.0),
-            branch_thickness: ValueOrRange(Value(3.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark"))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
+            dir: Normal,
+            length: Range(10.0, 25.0),
+            thickness: ValueOrRange(Value(3.0)),
+            filter: Filter(ignore_root: false, ),
         )),
-        GrowDirection((
+        Grow((
             times: Value(1),
-            trunk_growth_direction: Normal,
-            branch_len: Range(50.0, 60.0),
-            branch_thickness: IterationScale (
-                min: Value(2.0),
-                max: Value(1.0),
-            ),
-            decoration: Value(Solid(VoxelMapping(name: "bark"))),
+            dir: Normal,
+            length: Range(50.0, 60.0),
+            thickness: IterationScale (min: Value(2.0), max: Value(1.0), ),
         )),
-        SpawnLeaves((
+        Shape((
             shape: ConiferWhorl((
                 max_branch_length: 19.0,
                 max_branch_width: 8.5,
@@ -44,16 +35,13 @@
                 arm_facing: Horizontal,
                 whorl_spacing: 3.0,
             )),
-            filter: BranchFilter(
-                ignore_shapes: true,
-                id_filter: Target(2),
-            ),
-            decoration: Value(Gradient((
+            filter: Filter(ignore_shapes: true, id_filter: Target(2)),
+            voxel: Value(Gradient((
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
-                    LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    LeafGradientEntry(percent: 0.75, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                    (percent: 0.4,  voxel: (name: "leaf_dark")),
+                    (percent: 0.75, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
                 ],
             ))),
         )),

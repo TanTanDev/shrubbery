@@ -52,6 +52,8 @@ impl Branch {
                 branch_len = to_world.length();
                 to_world.normalize()
             }
+            // should technically never be set here, but self.dir, shoul be set from attractors
+            BranchGrowthDirection::Attractor { .. } => self.dir,
         };
 
         Self {
@@ -82,32 +84,30 @@ fn default_true() -> bool {
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct BranchFilter {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(default))]
+pub struct Filter {
     /// Skip branches that already have a leaf group assigned.
     #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub ignore_shapes: bool,
     /// Skip root branches (those with no parent).
     #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub ignore_root: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub id_filter: IdFilter,
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub iteration_filter: IterationFilter,
+    pub id: IdFilter,
+    pub iteration: IterationFilter,
 }
 
-impl Default for BranchFilter {
+impl Default for Filter {
     fn default() -> Self {
         Self {
             ignore_shapes: true,
             ignore_root: true,
-            id_filter: IdFilter::default(),
-            iteration_filter: IterationFilter::default(),
+            id: IdFilter::default(),
+            iteration: IterationFilter::default(),
         }
     }
 }
 
-impl BranchFilter {
+impl Filter {
     pub fn should_include_branch(&self, branch: &Branch, last_id: u32) -> bool {
         if self.ignore_shapes && branch.leaf_group.is_some() {
             return false;
@@ -115,11 +115,11 @@ impl BranchFilter {
         if self.ignore_root && branch.parent_index.is_none() {
             return false;
         }
-        if !self.id_filter.is_id_included(branch, last_id) {
+        if !self.id.is_id_included(branch, last_id) {
             return false;
         }
         if !self
-            .iteration_filter
+            .iteration
             .is_iteration_included(branch.iteration, branch.iteration_total)
         {
             return false;

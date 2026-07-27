@@ -1,8 +1,8 @@
 //! Procedural voxel vegetation generation.
 //!
-//! Build a [`ShrubberyGenerator`] from a [`ShrubberySettings`] recipe and a
-//! seed, then call [`ShrubberyGenerator::voxelize`] to get the voxel grid.
-//! See the `examples/` directory for end-to-end usage with Bevy.
+//! Build a [`ShrubberyGenerator`] from a [`ShrubberySettings`]
+//! then call [`ShrubberyGenerator::voxelize`] to get the voxel grid.
+//! See the `examples/` for usage with Bevy.
 //!
 //! ```
 //! use shrubbery::prelude::*;

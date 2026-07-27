@@ -131,7 +131,7 @@ fn setup(
     ));
 
     commands.insert_resource(TreeAssetHandle(
-        asset_server.load("shrubbery/palm.shrubbery.ron"),
+        asset_server.load("shrubbery/oak.shrubbery.ron"),
     ));
 
     commands.insert_resource(AmbientLight {
@@ -261,7 +261,6 @@ fn spawn_on_asset_change(
             .id();
         for (pos, voxel_id) in voxels.into_iter() {
             let color = voxel_materials.color(voxel_id.0 as usize);
-            // info!("voxel id: {:?} ", voxel_id);
 
             commands.spawn((
                 Mesh3d(meshes.add(Cuboid::new(1., 1., 1.))),

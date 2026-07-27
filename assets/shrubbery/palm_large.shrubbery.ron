@@ -1,105 +1,83 @@
 (
     build_steps: [
-        SpawnRootBranch((
-            assign_id: AssignId(0),
-            count: 1,
-            pos: (0.0, 0.0, 0.0),
+        SpawnRoot((
+            id: AssignId(0),
             branch_len: Value(5.0),
             initial_dir: Random(
                 y_rotation_range: Range(0, 360),
                 z_rotation_max: Range(1, 4),
             ),
         )),
-        // Strong lean for visible palm curve
-        GrowDirection((
+        Grow((
             times: Range(7,10),
-            trunk_growth_direction: GravityLean(strength: 0.2),
-            branch_len: Value(6.0),
-            branch_thickness: ValueOrRange(Value(2.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark"))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
-            assign_id: AssignId(0),
+            dir: GravityLean(strength: 0.2),
+            length: Value(6.0),
+            thickness: ValueOrRange(Value(2.0)),
+            filter: Filter(ignore_root: false),
+            id: AssignId(0),
         )),
-        GrowDirection((
-            times: Value(1),
-            trunk_growth_direction: Normal,
-            branch_len: Value(4.5),
-            branch_thickness: ValueOrRange(Value(4.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark_dark"))),
-            filter: BranchFilter(
-                iteration_filter: Last,
-            ),
-            assign_id: AssignId(1),
+        Grow((
+            length: Value(4.5),
+            thickness: ValueOrRange(Value(4.0)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter(iteration: Last),
+            id: AssignId(1),
         )),
         // coconut branches
-        GrowRadial((
-            count: Range(1,5),
-            spacing_jitter: 0.5,
-            pitch_degrees: Value(-50.0),
-            trunk_growth_direction: Normal,
-            branch_len: Range(5.0, 13.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark"))),
-            filter: BranchFilter(
-                id_filter: Last,
-                iteration_filter: Last,
-            ),
-            assign_id: AssignId(2),
+        Grow((
+            spawn_method: GrowRadial((
+                count: Range(1,5),
+                spacing_jitter: 0.5,
+                pitch_degrees: Value(-50.0),
+            )),
+            length: Range(5.0, 13.0),
+            filter: Filter(id: Last, iteration: Last),
+            id: AssignId(2),
         )),
         // coconut balls
-        SpawnLeaves((
+        Shape((
             shape: Sphere(radius: Value(3.0)),
-            decoration: Value(Solid(VoxelMapping(name: "bark_bright"))),
-            filter: BranchFilter(
-                id_filter: Target(2),
-                iteration_filter: All,
+            voxel: Value(Solid(VoxelMapping(name: "bark_bright"))),
+            filter: Filter(
+                id: Target(2),
+                iteration: All,
             ),
         )),
-        GrowRadial((
-            count: Range(2,4),
-            spacing_jitter: 1.0,
-            pitch_degrees: Value(10.0),
-            trunk_growth_direction: Normal,
+        Grow((
+            spawn_method: GrowRadial((
+                count: Range(2,4),
+                spacing_jitter: 1.0,
+                pitch_degrees: Value(10.0),
+            )),
             branch_len: Value(10.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
-            filter: BranchFilter(
-                id_filter: Target(1),
-                iteration_filter: Last,
-            ),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_dark"))),
+            filter: Filter(id: Target(1), iteration: Last, ),
         )),
-        GrowRadial((
-            count: Range(3, 6),
-            spacing_jitter: 0.7,
-            pitch_degrees: Value(40.0),
-            trunk_growth_direction: Normal,
+        Grow((
+            spawn_method: GrowRadial((
+                count: Range(3, 6),
+                spacing_jitter: 0.7,
+                pitch_degrees: Value(40.0),
+            )),
             branch_len: Value(10.0),
-            branch_thickness: ValueOrRange(Value(1.0)),
-            decoration: Value(Solid(VoxelMapping(name: "leaf_dark"))),
-            filter: BranchFilter(
-                id_filter: Target(1),
-                iteration_filter: Last,
-            ),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_dark"))),
+            filter: Filter( id: Target(1), iteration: Last, ),
         )),
-        GrowDirection((
+        Grow((
             times: Value(4),
-            trunk_growth_direction: GravityLean(strength: 0.7),
-            branch_len: Range(4.0,12.0),
-            branch_thickness: ValueOrRange(Value(2.0)),
-            decoration: Value(Gradient((
+            dir: GravityLean(strength: 0.7),
+            length: Range(4.0,12.0),
+            thickness: ValueOrRange(Value(2.0)),
+            voxel: Value(Gradient((
                 sampling_method: IterationPercent,
                 modulation: Some(Random(percent_offset: 0.08)),
                 steps: [
-                    LeafGradientEntry(percent: 0.4,  voxel_mapping: VoxelMapping(name: "leaf_dark")),
-                    LeafGradientEntry(percent: 0.65, voxel_mapping: VoxelMapping(name: "leaf_mid")),
-                    LeafGradientEntry(percent: 1.0,  voxel_mapping: VoxelMapping(name: "leaf_bright")),
+                    (percent: 0.4,  voxel: (name: "leaf_dark")),
+                    (percent: 0.65, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
                 ],
             ))),
-            filter: BranchFilter(
-                ignore_root: false,
-            ),
+            filter: Filter( ignore_root: false, ),
         )),
     ],
 )

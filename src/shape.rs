@@ -9,11 +9,11 @@ use crate::{attractor::Attractor, shrubbery::AttractorSpacing};
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum Shape {
+pub enum AttractorShape {
     Cube(CubeShape),
 }
 
-impl Shape {
+impl AttractorShape {
     pub fn generate(
         &self,
         pos: Vec3,
@@ -22,7 +22,7 @@ impl Shape {
         rng: &mut ChaCha8Rng,
     ) {
         match self {
-            Shape::Cube(cube) => cube.generate(pos, attractors, settings, rng),
+            AttractorShape::Cube(cube) => cube.generate(pos, attractors, settings, rng),
         }
     }
 }
@@ -49,8 +49,8 @@ impl CubeShape {
         let scatter = spacing * 0.5 * jitter_ratio;
         let center_offset = -vec3(self.size_x, self.size_y, self.size_z) * 0.5;
 
-        let [nx, ny, nz] = [self.size_x, self.size_y, self.size_z]
-            .map(|v| (v / spacing).ceil() as i32);
+        let [nx, ny, nz] =
+            [self.size_x, self.size_y, self.size_z].map(|v| (v / spacing).ceil() as i32);
 
         for x in 0..nx {
             for y in 0..ny {
