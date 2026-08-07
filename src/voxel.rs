@@ -15,7 +15,6 @@ use crate::{
 const EPSILON: f32 = 0.0001;
 
 /// Logs through bevy when the `bevy` feature is on, otherwise to stderr —
-/// so the crate still builds (and reports) without bevy.
 macro_rules! log_error {
     ($($t:tt)*) => {{
         #[cfg(feature = "bevy")]
@@ -25,6 +24,7 @@ macro_rules! log_error {
     }};
 }
 
+/// Logs through bevy when the `bevy` feature is on, otherwise to stderr —
 macro_rules! log_warn {
     ($($t:tt)*) => {{
         #[cfg(feature = "bevy")]
@@ -34,16 +34,15 @@ macro_rules! log_warn {
     }};
 }
 
-/// Opaque, copyable handle for a voxel type within a single
-/// [`VoxelDefinitions`] registry. Values come from
+/// The raw voxel data representation that Shrubbery produce
+/// [`VoxelDefinitions`] holds a registry mapping the names to the id.
 /// [`VoxelDefinitions::id_from_name`].
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VoxelId(pub u32);
 
-/// A voxel reference that can be written in assets *before* the voxel
-/// registry exists. `name` is resolved to `id` by
-/// [`VoxelDefinitions::id_from_name`] once a registry is available.
+/// Used to serialize a "pretty" voxel name
+/// to later be resolved into a runtime friendly VoxelId
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct VoxelMapping {
@@ -59,7 +58,7 @@ impl VoxelMapping {
     }
 }
 
-/// Registry mapping voxel names (as authored in assets) to runtime [`VoxelId`]s.
+/// Registry mapping voxel name to runtime friendly [`VoxelId`]s.
 /// Built by the host application; voxelize output is only meaningful once every
 /// referenced name has been resolved against one of these.
 #[derive(Default)]

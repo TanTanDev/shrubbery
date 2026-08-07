@@ -27,7 +27,7 @@ impl AttractorShape {
     }
 }
 
-/// Axis-aligned box of attractors. `size_x/y/z` are the full edge lengths.
+/// Shape for spawning Attractors. `size_(x/y/z)` specify full length.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CubeShape {

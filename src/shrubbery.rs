@@ -70,7 +70,9 @@ impl ValueOrRangeF32 {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BranchSpawnMethod {
     #[default]
+    /// Only spawn 1 new branch
     Single,
+    /// Spawn multiple branches in a radial formation
     GrowRadial(GrowRadial),
 }
 
@@ -139,13 +141,13 @@ impl AssignBranchId {
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(default))]
 pub struct GrowStep {
-    /// Chanse that this grow step will execute
+    /// Chance that this grow step will execute
     pub chance: StepChance,
-    /// Initial spawn method, single or radial
+    /// Initial spawn method, single or radial (only executed first `times` iteration)
     pub spawn_method: BranchSpawnMethod,
     /// How many times to grow
     pub times: ValueOrRangeU32,
-    /// What dir to grow the branch in
+    /// What dir to grow the branch
     pub dir: BranchGrowthDirection,
     /// Branch length
     pub length: ValueOrRangeF32,
@@ -153,7 +155,7 @@ pub struct GrowStep {
     pub thickness: BranchThickness,
     /// How voxels are decorated
     pub voxel: DecorationSelector,
-    /// How to assign id to branches
+    /// How to assign id to branches (used for Filtering)
     pub id: AssignBranchId,
     /// Filters what branches to grow from
     pub filter: Filter,
@@ -163,6 +165,7 @@ pub struct GrowStep {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BranchThickness {
     ValueOrRange(ValueOrRangeF32),
+    /// thickness is scaled based upon the branch's start and end pos
     IterationScale {
         min: ValueOrRangeF32,
         max: ValueOrRangeF32,
@@ -195,40 +198,19 @@ impl BranchThickness {
     }
 }
 
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct GrowToAttractors {
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub chance: StepChance,
-    pub times: ValueOrRangeU32,
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub iteration_calculation: IterationCalculation,
-    pub branch_len: ValueOrRangeF32,
-    /// radius to delete attractors
-    pub kill_distance: f32,
-    /// how close an attractor has to be to pull branch
-    pub leaf_attraction_dist: f32,
-    pub decoration: DecorationSelector,
-    pub branch_thickness: BranchThickness,
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub assign_id: AssignBranchId,
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub filter: Filter,
-}
-
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BranchGrowthDirection {
     /// Grow from (dir, derived from parent branch)
     #[default]
     Normal,
-    /// Grow in this direction (normalized)
+    /// Grow in this direction (normalized internally)
     Target(Vec3),
     /// Branch will arrive at this world pos
     WorldPos(Vec3),
-    /// Grow from dir, (derived from parent normal), but apply gravity
+    /// Grow from dir, (derived from parent normal), but apply gravity on Y axis
     GravityLean { strength: f32 },
-    /// Grow branches using space-colonizations
+    /// Grow branches using space-colonization towards attractor points
     Attractor(AttractorSettings),
 }
 
@@ -528,11 +510,7 @@ impl ShrubberyGenerator {
         }
     }
 
-    /// Create a generator and immediately run all of `settings`' build steps.
-    ///
-    /// Equivalent to [`new`][Self::new] followed by
-    /// [`execute_all_steps`][Self::execute_all_steps]; useful when you don't
-    /// need to drive individual steps.
+    /// Create a generator and immediately execute all steps
     pub fn generate(seed: u64, settings: &ShrubberySettings) -> Self {
         let mut generator = Self::new(seed);
         generator.execute_all_steps(settings);

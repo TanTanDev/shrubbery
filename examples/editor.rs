@@ -659,9 +659,7 @@ fn collect_voxel_names(settings: &ShrubberySettings) -> Vec<String> {
     for step in &settings.build_steps {
         let decoration = match step {
             ShrubberyStep::Grow(step) => Some(&step.voxel),
-            // ShrubberyStep::GrowToAttractors(step) => Some(&step.decoration),
             ShrubberyStep::Shape(step) => Some(&step.voxel),
-            // ShrubberyStep::GrowRadial(step) => Some(&step.decoration),
             _ => None,
         };
         if let Some(decoration) = decoration {

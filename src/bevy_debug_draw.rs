@@ -154,10 +154,7 @@ fn step_name(step: &ShrubberyStep) -> &'static str {
     match step {
         ShrubberyStep::SpawnRoot(_) => "SpawnRootBranch",
         ShrubberyStep::Grow(_) => "GrowDirection",
-        // ShrubberyStep::GrowRadial(_) => "GrowRadial",
-        // ShrubberyStep::GrowToAttractors(_) => "GrowToAttractors",
         ShrubberyStep::SpawnAttractors(_) => "SpawnAttractors",
-        // ShrubberyStep::SpawnAttractorsOnBranches(_) => "SpawnAttractorOnBranches",
         ShrubberyStep::ClearAttractors => "ClearAttractors",
         ShrubberyStep::Shape(_) => "SpawnLeaves",
     }

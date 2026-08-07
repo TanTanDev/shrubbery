@@ -1,16 +1,6 @@
-//! Procedural voxel vegetation generation.
+//! Procedural voxel shape generation library, .
 //!
-//! Build a [`ShrubberyGenerator`] from a [`ShrubberySettings`]
-//! then call [`ShrubberyGenerator::voxelize`] to get the voxel grid.
 //! See the `examples/` for usage with Bevy.
-//!
-//! ```
-//! use shrubbery::prelude::*;
-//!
-//! let settings: ShrubberySettings = Default::default();
-//! let mut generator = ShrubberyGenerator::generate(42, &settings);
-//! let voxels = generator.voxelize();
-//! ```
 
 pub mod attractor;
 pub mod branch;
