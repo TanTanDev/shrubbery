@@ -100,24 +100,16 @@ impl Default for GrowRadial {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum ShrubberyStep {
-    /// Spawn a point where branches can grow from
+    /// Spawn a position where branches can grow from
     SpawnRoot(SpawnRootStep),
-    /// Grow branches based upon specific direction
+    /// Grow branches. specify how via `spawn_method`
     Grow(GrowStep),
-    /// Grow multiple branches, in a radial direction
-    // GrowRadial(GrowRadial),
-    // /// Grow branches toward existing attractors using space colonization.
-    // GrowToAttractors(GrowToAttractors),
-    /// Spawn attractors at a fixed world position.
+    /// Spawn attractors, based upon `shape` and `location`
     SpawnAttractors(SpawnAttractors),
-    /// Spawn one attractor shape per selected branch tip.
-    // SpawnAttractorsOnBranches(SpawnAttractorsOnBranches),
+    /// delete ALL generated attractor points
     ClearAttractors,
-    /// Assign a leaf shape to branches matching the filter.
-    ///
-    /// Only branches that have not yet been assigned a leaf group are
-    /// considered, unless `overwrite` is true.  Run this immediately after
-    /// the growth step that produced the branches you want to decorate.
+    /// Assign a leaf shape to branches
+    /// Already assigned leaf groups are skipped unless `overwrite` is true
     Shape(ShapeStep),
 }
 
