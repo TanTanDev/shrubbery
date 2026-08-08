@@ -38,7 +38,7 @@ fn different_seeds_different_voxels() {
 fn sorted_voxels(
     seed: u64,
     settings: &ShrubberySettings,
-) -> Vec<(glam::IVec3, shrubbery::voxel::VoxelId)> {
+) -> Vec<(glam::IVec3, shrubbery_voxel::voxel::VoxelId)> {
     let mut generator = ShrubberyGenerator::generate(seed, settings);
     let mut voxels = generator.voxelize();
     voxels.sort_by_key(|(pos, _)| (pos.x, pos.y, pos.z));

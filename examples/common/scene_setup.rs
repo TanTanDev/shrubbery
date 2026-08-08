@@ -48,7 +48,7 @@ fn setup(
         Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
     ));
 
-    commands.insert_resource(AmbientLight {
+    commands.insert_resource(GlobalAmbientLight {
         color: WHITE.into(),
         brightness: 400.0,
         affects_lightmapped_meshes: true,
@@ -57,7 +57,7 @@ fn setup(
     commands.spawn((
         DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform {
@@ -76,7 +76,7 @@ fn setup(
         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
         MeshMaterial3d(materials.add(Color::WHITE)),
         PointLight {
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             color: YELLOW.into(),
             ..default()
         },

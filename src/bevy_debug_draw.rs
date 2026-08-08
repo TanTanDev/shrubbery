@@ -355,7 +355,7 @@ fn draw_debug_gizmos(
         }
         for volume in &cache.attractor_volumes {
             let center = transform.transform_point(volume.center);
-            gizmos.cuboid(
+            gizmos.cube(
                 Transform::from_translation(center)
                     .with_rotation(transform.rotation())
                     .with_scale(volume.half_extents * 2.0),
