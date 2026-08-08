@@ -4,9 +4,8 @@ use ahash::HashSet;
 use crate::{
     attractor::Attractor,
     branch::Branch,
-    filter::{Filter, IterationFilter},
+    prelude::*,
     shape::AttractorShape,
-    value_or_range::{ValueOrRangeF32, ValueOrRangeU32},
     voxel::{DecorationSelector, Shape, VoxelDefinitions},
 };
 
@@ -287,6 +286,7 @@ pub struct FromBranchSettings {
 }
 
 /// attractor shapes, are more commonly spawned at end of branches iteration
+#[cfg(feature = "serde")]
 fn default_spawn_attractor_filter() -> Filter {
     Filter {
         iteration: IterationFilter::Last,
