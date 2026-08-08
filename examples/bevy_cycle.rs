@@ -1,3 +1,5 @@
+//! This example allows you to cycle through and preview
+//! all "shrubbery.ron" Assets
 #[path = "common/scene_setup.rs"]
 mod scene_setup;
 
@@ -95,69 +97,7 @@ fn setup(mut commands: Commands) {
 
     commands.insert_resource(VoxelDefinitions(map));
     commands.insert_resource(voxel_materials);
-    // commands.spawn((
-    //     Camera3d::default(),
-    //     Transform::from_xyz(0.0, 90.5, 90.0).looking_at(Vec3::ZERO, Vec3::Y),
-    //     FlyCamera::default(),
-    // ));
-
-    // commands.spawn((
-    //     Mesh3d(meshes.add(Circle::new(100.0))),
-    //     MeshMaterial3d(materials.add(Color::WHITE)),
-    //     Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-    // ));
-
-    // commands.insert_resource(AmbientLight {
-    //     color: WHITE.into(),
-    //     brightness: 600.0,
-    //     affects_lightmapped_meshes: true,
-    // });
-
-    // commands.spawn((
-    //     DirectionalLight {
-    //         illuminance: light_consts::lux::OVERCAST_DAY,
-    //         shadows_enabled: true,
-    //         ..default()
-    //     },
-    //     Transform {
-    //         translation: Vec3::new(0.0, 2.0, 0.0),
-    //         rotation: Quat::from_rotation_x(-PI / 4.),
-    //         ..default()
-    //     },
-    //     CascadeShadowConfigBuilder {
-    //         first_cascade_far_bound: 4.0,
-    //         maximum_distance: 10.0,
-    //         ..default()
-    //     }
-    //     .build(),
-    // ));
-    // commands.spawn((
-    //     Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-    //     MeshMaterial3d(materials.add(Color::WHITE)),
-    //     PointLight {
-    //         shadows_enabled: true,
-    //         color: YELLOW.into(),
-    //         ..default()
-    //     },
-    //     Transform::from_xyz(4.0, 8.0, 4.0),
-    //     RotatingLightTag,
-    // ));
 }
-
-// fn move_light(mut query: Query<&mut Transform, With<RotatingLightTag>>, time: Res<Time>) {
-//     let speed = 5.0;
-//     let rotation = time.elapsed_secs() * speed;
-//     let quat = Quat::from_rotation_y(rotation);
-//     let distance = 14.0;
-//     let boom = Vec3::X * distance;
-//     for mut transform in query.iter_mut() {
-//         transform.translation = quat * boom;
-//         transform.translation.y = 8.0;
-//     }
-// }
-
-// #[derive(Component)]
-// pub struct RotatingLightTag;
 
 /// root entity holding tree voxels
 #[derive(Component)]
