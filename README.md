@@ -3,11 +3,8 @@
 
 rust library: Space colonization implementation, for generating trees / shrubbery, with built in voxelization utility.
 
-### Screenshot example: voxel.
-left: Voxel tree
-
-right: debug representation of branches + attractors renders as yellow dots.
-![voxel example](voxel_example.png)
+### example: "editor"
+![editor preview](editor_preview.png)
 
 ## Example code
 ```rs
