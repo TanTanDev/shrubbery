@@ -1,0 +1,70 @@
+(
+    build_steps: [
+        SpawnRoot((
+            branch_len: Value(5.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Range(1, 4),
+            ),
+        )),
+        Grow((
+            id: AssignId(0),
+            times: Value(6),
+            dir: GravityLean(strength: 0.3),
+            length: Range(8.0, 11.0),
+            thickness: IterationScale (min: Value(4.5), max: Value(1.0), ),
+            filter: Filter(ignore_root: false, ),
+        )),
+        SpawnAttractors((
+            location: FromBranch((
+                offset: WorldUp(6.0),
+                filter: Filter( id: Target(0), iteration: Lower(4), ),
+            )),
+            shape: Cube((size_x: 28.0, size_y: 4.0, size_z: 28.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 8.0, jitter_ratio: 1.0),
+        )),
+        Grow((
+            chance: Chance(30.0),
+            dir: Attractor((
+                kill_distance: 5.0,
+                attract_distance: 9.0,
+            )),
+            times: Value(3),
+            length: Value(6.0),
+            thickness: ValueOrRange(Value(1.3)),
+            filter: Filter( id: Target(0), iteration: Lower(4)),
+            id: AssignId(3),
+        )),
+        ClearAttractors,
+        SpawnAttractors((
+            location: FromBranch((
+                offset: WorldUp(10.0),
+                filter: Filter( id: Target(0), iteration: Last, ),
+            )),
+            shape: Cube((size_x: 50.0, size_y: 35.0, size_z: 50.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 9.0, jitter_ratio: 1.0),
+        )),
+        Grow((
+            dir: Attractor((
+                kill_distance: 8.0,
+                attract_distance: 25.0,
+            )),
+            id: AssignId(2),
+            times: Value(4),
+            length: Value(12.0),
+            thickness: ValueOrRange(Value(2.0)),
+            filter: Filter(id: Target(0),),
+        )),
+        Shape((
+            shape: Sphere(radius: Range(6.0, 9.0)),
+            voxel: Value(Gradient((
+                modulation: Some(Random(percent_offset: 0.1)),
+                steps: [
+                    (percent: 0.33, voxel: (name: "leaf_dark")),
+                    (percent: 0.66, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
+                ],
+            ))),
+        )),
+    ],
+)

@@ -1,0 +1,48 @@
+(
+    build_steps: [
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (0.0, 2.0, 0.0),
+            Length: Value(5.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Value(90),
+            ),
+        )),
+        Grow((
+            times: Value(6),
+            length: Range(3.0, 5.0),
+            thickness: IterationScale ( min: Range(2.0, 5.0), max: Value(2.0), ),
+            filter: Filter(ignore_root: false, ),
+        )),
+        SpawnAttractors((
+            location: FromBranch((
+                offset: WorldUp(10.0),
+                filter: Filter( iteration: Last, ),
+            )),
+            shape: Cube((size_x: 25.0, size_y: 20.0, size_z: 25.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 5.0, jitter_ratio: 1.0),
+        )),
+        Grow((
+            dir: Attractor((
+                kill_distance: 5.0,
+                attract_distance: 6.0,
+            )),
+            times: Value(2),
+            length: Value(7.0),
+            filter: Filter(iteration: All, id: Target(1), ),
+        )),
+        Shape((
+            shape: Sphere(radius: Value(6.0)),
+            filter: Filter(iteration: Last, ),
+            voxel: Value(Gradient((
+                modulation: Some(Random(percent_offset: 0.1)),
+                steps: [
+                    (percent: 0.33, voxel: (name: "leaf_dark")),
+                    (percent: 0.66, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
+                ],
+            ))),
+        )),
+    ],
+)

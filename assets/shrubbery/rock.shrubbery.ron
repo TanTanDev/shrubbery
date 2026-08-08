@@ -1,0 +1,21 @@
+(
+    build_steps: [
+        SpawnRoot((
+            id: AssignId(0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Range(0, 90),
+            ),
+        )),
+        Grow((
+            times: Value(3),
+            length: Range(2.0, 6.0),
+            thickness: IterationScale (
+                min: Range(4.0, 10.0),
+                max: Range(3.0, 10.0),
+            ),
+            voxel: Value(Solid(VoxelMapping(name: "bark"))),
+            filter: Filter( ignore_root: false, ),
+        )),
+    ],
+)

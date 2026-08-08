@@ -1,0 +1,79 @@
+(
+    build_steps: [
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (-10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(60, 120),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(60, 120),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (-10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(240, 280),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(240, 280),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (-30.0, 0.0, 15.0),
+            initial_dir: Random(
+                y_rotation_range: Range(240, 280),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (30.0, 0.0, 15.0),
+            initial_dir: Random(
+                y_rotation_range: Range(240, 280),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (-25.0, 0.0, -10.0),
+            initial_dir: Random(
+                y_rotation_range: Range(60, 120),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            pos: (40.0, 0.0, -10.0),
+            initial_dir: Random(
+                y_rotation_range: Range(60, 120),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        Grow((
+            times: Value(6),
+            dir: GravityLean(strength: 0.2),
+            length: Range(2.0, 8.0),
+            thickness: IterationScale (min: Value(3.0), max: Value(1.5)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter(
+                ignore_root: false,
+            ),
+            id: AssignId(0),
+        )),
+    ],
+)

@@ -1,0 +1,83 @@
+(
+    build_steps: [
+        SpawnRoot((
+            id: AssignId(0),
+            branch_len: Value(5.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Range(1, 4),
+            ),
+        )),
+        Grow((
+            times: Range(7,10),
+            dir: GravityLean(strength: 0.2),
+            length: Value(6.0),
+            thickness: ValueOrRange(Value(2.0)),
+            filter: Filter(ignore_root: false),
+            id: AssignId(0),
+        )),
+        Grow((
+            length: Value(4.5),
+            thickness: ValueOrRange(Value(4.0)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter(iteration: Last),
+            id: AssignId(1),
+        )),
+        // coconut branches
+        Grow((
+            spawn_method: GrowRadial((
+                count: Range(1,5),
+                spacing_jitter: 0.5,
+                pitch_degrees: Value(-50.0),
+            )),
+            length: Range(5.0, 13.0),
+            filter: Filter(id: Last, iteration: Last),
+            id: AssignId(2),
+        )),
+        // coconut balls
+        Shape((
+            shape: Sphere(radius: Value(3.0)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_bright"))),
+            filter: Filter(
+                id: Target(2),
+                iteration: All,
+            ),
+        )),
+        Grow((
+            spawn_method: GrowRadial((
+                count: Range(2,4),
+                spacing_jitter: 1.0,
+                pitch_degrees: Value(10.0),
+            )),
+            branch_len: Value(10.0),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_dark"))),
+            filter: Filter(id: Target(1), iteration: Last, ),
+        )),
+        Grow((
+            spawn_method: GrowRadial((
+                count: Range(3, 6),
+                spacing_jitter: 0.7,
+                pitch_degrees: Value(40.0),
+            )),
+            branch_len: Value(10.0),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_dark"))),
+            filter: Filter( id: Target(1), iteration: Last, ),
+        )),
+        Grow((
+            times: Value(4),
+            dir: GravityLean(strength: 0.7),
+            length: Range(4.0,12.0),
+            thickness: ValueOrRange(Value(2.0)),
+            voxel: Value(Gradient((
+                sampling_method: IterationPercent,
+                modulation: Some(Random(percent_offset: 0.08)),
+                steps: [
+                    (percent: 0.4,  voxel: (name: "leaf_dark")),
+                    (percent: 0.65, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
+                ],
+            ))),
+            filter: Filter( ignore_root: false, ),
+        )),
+    ],
+)

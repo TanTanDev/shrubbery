@@ -1,46 +1,104 @@
 # shrubbery
 <img src="shrubbery_logo.png" width="200" />
-rust library: Space colonization implementation, for generating trees / shrubbery, with built in voxelization utility.
 
-### Screenshot example: voxel.
-left: Voxel tree
+Shrubbery is a procedural voxel generation library for rust projects.
+Features:
+* Serializable shaping logic
+* Built in space colonization implementation
+* Deterministic generation
 
-right: debug representation of branches + attractors renders as yellow dots.
-![voxel example](voxel_example.png)
+## Integrate into any game
+This is my voxel game, utilizing shrubbery.ron assets.
+![voxel game integration](voxel_game_integration_preview.png)
 
-## Example code
+## Example: "editor"
+The editor example code, can preview ANY shrubbery.ron asset. 
+![editor preview](editor_preview.png)
+
+## Example code: minimal
 ```rs
-let mut shrubbery = Shrubbery::new(
-    vec3(0., 0., 0.), // rot position
-    vec3(0., 1., 0.), // initial growth dir
-    AlgorithmSettings {
-        branch_len: 2.0,
-        leaf_attraction_dist: 6.0,
-		..Default::default()
-    },
-    AttractorGeneratorSettings::default(),
-);
-
-// spawn particles for tree to grow into
-shrubbery.spawn_attractors_from_shape(
-    vec3(0., 5. + 8.0, 0.),
-    BoxShape {
-        x: 15.0,
-        y: 10.0,
-        z: 15.,
-    },
-);
-
-// keep spawning root branches until attractors can be found
-shrubbery.build_trunk();
-
-// grow tree 8 times
-(0..8).for_each(|_|shrubbery.grow());
-
-// make data for the tree as a voxel
-let mut voxels = voxelize(shrubbery, VoxelizeSettings::default());
-
+fn main() {
+    let shrubbery_settings = shrubbery_settings();
+    let seed = rand::random();
+    let mut generator = ShrubberyGenerator::generate(seed, &shrubbery_settings);
+    let voxels = generator.voxelize();
+}
 ```
+
+Runnable demos live in `examples/` (e.g. `cargo run --example bevy_cycle`).
+
+## How a shrubbery is designed
+Here is all shaping features:
+* Branch (3D lines with start + end point)
+* Shape::Sphere, spawned on branch end points
+* Shape::ConiferWhorl, segmented 4-star shape, placed along a branch's start-end point. Perfect for fir/pine trees.
+* Shape::Starleaf, a 4-star shape.
+
+You construct building steps, here is an example based upon: "Assets/oak.shrubbery.ron"
+```ron
+(
+    build_steps: [
+        SpawnRoot(( id: AssignId(0), )),
+        Grow((
+            times: Value(7),
+            length: Range(3.0, 5.0),
+            thickness: IterationScale(min: Value(3.0), max: Value(1.0),),
+            filter: (ignore_root: false),
+        )),
+        SpawnAttractors((
+            location: FromBranch(()),
+            shape: Cube((size_x: 25.0, size_y: 20.0, size_z: 25.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 6.0, jitter_ratio: 1.0),
+        )),
+        // spawn new branches using space colonization to fill the attractor space
+        Grow((
+            times: Value(3),
+            dir: Attractor(()),
+            length: Value(8.0),
+            filter: (id: Target(1)),
+        )),
+        Shape((
+            shape: Sphere(radius: Value(6.0)),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_orange"))),
+            filter: (iteration: Greater(0)),
+    ],
+)
+```
+
+## Feature flags
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `serde` | ✓ | Serialization for settings and voxel definitions (RON, etc.) |
+| `bevy` | ✓ | Bevy integration: `shrubbery.ron` asset loader, plugin, debug draw. Implies `serde` and pulls in `ron` |
+
+
+## Bevy support table
+
+| bevy | shrubbery |
+|--------|---------|
+| 0.17.3 | 0.2     |
+
+## Testing
+
+```sh
+cargo test
+```
+
+Determinism is verified with golden hashes: `tests/golden_hashes/*.golden.ron`
+record the expected voxel-output hash for every asset in `assets/shrubbery/`
+at a fixed set of seeds. The tests discover assets automatically — there is no
+hard-coded list.
+
+If you **intentionally change generation behavior** or **add a new asset**,
+the golden hash test will fail until you regenerate and commit the goldens:
+
+```sh
+cargo test --test generate_golden_hashes -- --ignored --nocapture
+```
+
+Review the resulting diff carefully — a changed golden hash means the voxel
+output for that asset and seed changed.
 
 ## License
 

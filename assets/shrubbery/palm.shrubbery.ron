@@ -1,0 +1,68 @@
+(
+    build_steps: [
+        SpawnRoot((
+            id: AssignId(0),
+            branch_len: Value(5.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Range(1, 7),
+            ),
+        )),
+        // root branch
+        Grow((
+            times: Value(5),
+            dir: GravityLean(strength: 0.2),
+            length: Range(3.5, 4.5),
+            thickness: IterationScale(min: Value(2.0), max: Value(1.0),),
+            filter: Filter( ignore_root: false, ),
+            id: AssignId(0),
+        )),
+        // thick top
+        Grow((
+            times: Value(1),
+            length: Value(7.5),
+            thickness: ValueOrRange(Value(3.0)),
+            filter: Filter( iteration: Last, ),
+            id: AssignId(1),
+        )),
+        // branches, holding future coconut ball
+        Grow((
+            times: Value(1),
+            spawn_method: GrowRadial((
+                count: Value(3),
+                spacing_jitter: 1.0,
+                pitch_degrees: Value(-40.0),
+            )),
+            length: Range(6.0,9.0),
+            filter: Filter(id: Last, iteration: Last),
+            id: AssignId(2),
+        )),
+        // coconut balls
+        Shape((
+            shape: Sphere(radius: Value(2.0)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_bright"))),
+            filter: Filter(id: Target(2), iteration: All),
+        )),
+        // palm leaves
+        Grow((
+            times: Value(5),
+            spawn_method: GrowRadial((
+                count: Value(3),
+                spacing_jitter: 0.5,
+                pitch_degrees: Value(40.0),
+            )),
+            length: Range(3.0, 6.0),
+            dir: GravityLean(strength: 0.6),
+            voxel: Value(Gradient((
+                sampling_method: IterationPercent,
+                modulation: Some(Random(percent_offset: 0.08)),
+                steps: [
+                    (percent: 0.4,  voxel: (name: "leaf_dark")),
+                    (percent: 0.65, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
+                ],
+            ))),
+            filter: Filter(id: Target(1), iteration: Last),
+        )),
+    ],
+)

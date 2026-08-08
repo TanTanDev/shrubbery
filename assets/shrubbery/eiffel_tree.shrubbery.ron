@@ -1,0 +1,104 @@
+(
+    build_steps: [
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
+            pos: (-10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
+            pos: (10.0, 0.0, -20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
+            pos: (-10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(5.0),
+            pos: (10.0, 0.0, 20.0),
+            initial_dir: Random(
+                y_rotation_range: Range(250, 270),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        Grow((
+            times: Value(7),
+            dir: GravityLean(strength: 0.2),
+            length: Range(7.5, 7.5),
+            thickness: IterationScale (min: Value(3.0), max: Value(1.5), ),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter( ignore_root: false, ),
+            id: AssignId(0),
+        )),
+        Grow((
+            times: Value(1),
+            dir: WorldPos(Vec3(0,40,0)),
+            length: Range(7.5, 7.5),
+            thickness: IterationScale (min: Value(3.0), max: Value(1.5)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter( iteration: Last, ),
+            id: AssignId(0),
+        )),
+        SpawnRoot((
+            id: AssignId(1),
+            length: Value(5.0),
+            pos: (0.0, 40.0, 0.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        SpawnRoot((
+            id: AssignId(1),
+            length: Value(5.0),
+            pos: (0.0, 40.0, 0.0),
+            initial_dir: Random(
+                y_rotation_range: Range(70, 110),
+                z_rotation_max: Range(5, 7),
+            ),
+        )),
+        Grow((
+            times: Value(1),
+            dir: Target(Vec3(0,-1,0)),
+            length: Value(9.0),
+            thickness: ValueOrRange(Value(1.0)),
+            voxel: Value(Solid(VoxelMapping(name: "bark_dark"))),
+            filter: Filter( ignore_root: false, ),
+            id: AssignId(1),
+        )),
+        Shape((
+            shape: StarLeaf((
+                arm_length: Value(9.0),
+                arm_width: 3.5,
+                thickness: 2,
+                branch_sharpness: 0.6,
+                droop: 0.9,
+                tip_lift: 0.0,
+            )),
+            filter: Filter(ignore_root: false, id: Target(1), iteration: All, ),
+            voxel: Value(Gradient((
+                modulation: Some(Random(percent_offset: 0.08)),
+                steps: [
+                    (percent: 0.55,  voxel: (name: "leaf_dark")),
+                    (percent: 0.75, voxel: (name: "leaf_mid")),
+                    (percent: 1.0,  voxel: (name: "leaf_bright")),
+                ],
+            ))),
+        )),
+    ],
+)

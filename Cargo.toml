@@ -1,14 +1,46 @@
 [package]
-name = "shrubbery"
-version = "0.1.0"
+name = "shrubbery-voxel"
+version = "0.2.0"
 edition = "2024"
+description = "Procedural voxel shape generation library"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["voxel", "procedural", "gamedev", "bevy"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["serde", "bevy"]
+serde = ["dep:serde", "dep:ron", "glam/serde"]
+bevy = ["dep:bevy", "serde"]
 
 [dependencies]
-glam = "0.30"
-rand = "0.9"
-rand_chacha = "0.9"
+glam = "0.33"
+rand = "0.10"
+rand_chacha = "0.10"
+thiserror = "2.0"
+ahash = "0.8"
+ron = { version = "0.12", optional = true }
+bevy = {
+  version = "0.17.3",
+  optional = true,
+  default-features = false,
+  features = [
+      "bevy_asset",
+      "bevy_color",
+      "bevy_render",
+      "bevy_pbr",
+      "bevy_gizmos",
+      "bevy_log",
+  ],
+}
+
+serde = { version = "1.0", features = ["derive"], optional = true }
 
 [dev-dependencies]
-kiss3d = "0.37"
+bevy = { version = "0.17.3", default-features = true, features = [ "file_watcher"]}
+criterion = {version="0.8", features = ["html_reports"]}
+sha2 = "0.11"
+rfd = "0.17"
+
+[[bench]]
+name = "benches"
+harness = false

@@ -1,0 +1,56 @@
+(
+    build_steps: [
+        SpawnRoot((
+            id: AssignId(0),
+            length: Value(4.0),
+            initial_dir: Random(
+                y_rotation_range: Range(0, 360),
+                z_rotation_max: Range(0, 2),
+            ),
+        )),
+        Grow((
+            dir: GravityLean(strength: 0.6),
+            length: Value(8.0),
+            filter: Filter( ignore_root: false, ),
+        )),
+        Grow((
+            times: Value(1),
+            dir: GravityLean(strength: 0.3),
+            length: Value(32.0),
+        )),
+        Shape((
+            shape: ConiferWhorl((
+                max_branch_length: 14.0,
+                max_branch_width: 5.5,
+                branch_sharpness: 0.7,
+                branch_thickness: 1,
+                branch_droop: 0.3,
+                tip_lift: 0.0,
+                rotation_step: 2.39996,
+                length_jitter_ratio: 0.15,
+                taper: Height(min_y: 10.0, max_y: 46.0),
+                arm_facing: Horizontal,
+                whorl_spacing: 1.7,
+            )),
+            filter: Filter( id: Target(2), ),
+            voxel: RandomWeighted([
+                (
+                    voxel: Solid(VoxelMapping(name: "bark")),
+                    weight: 1,
+                ),
+                (
+                    weight: 4,
+                    voxel: Gradient((
+                        modulation: Some(Random(percent_offset: 0.01)),
+                        steps: [
+                            (percent: 0.4,  voxel: (name: "leaf_bright")),
+                            (percent: 0.75, voxel: (name: "leaf_mid")),
+                            (percent: 1.0,  voxel: (name: "leaf_dark")),
+                        ],
+                    ))
+                    
+                )
+            ]),
+        )),
+    ],
+)
