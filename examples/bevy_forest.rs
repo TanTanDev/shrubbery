@@ -8,7 +8,7 @@ use bevy::{
 };
 use rand::{RngExt, SeedableRng, seq::IndexedRandom};
 use shrubbery::{
-    bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
+    bevy_fly_cam::{FlyCamera, FlyCameraPlugin},
     bevy_plugin::ShrubberyAsset,
     prelude::*,
 };
@@ -53,11 +53,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(ShrubberyPlugin)
-        .add_plugins(NoCameraPlayerPlugin)
-        .insert_resource(MovementSettings {
-            sensitivity: 0.00015,
-            speed: 64.0,
-        })
+        .add_plugins(FlyCameraPlugin)
         .add_systems(Startup, setup)
         .add_systems(Startup, setup_assets)
         .add_systems(Update, setup_forest)
@@ -111,7 +107,7 @@ fn setup(
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 90.5, 90.0).looking_at(Vec3::ZERO, Vec3::Y),
-        FlyCam,
+        FlyCamera::default(),
     ));
 
     commands.spawn((

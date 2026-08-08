@@ -27,7 +27,7 @@ use bevy::{
 use rand::{RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
 use shrubbery::{
-    bevy_fly_cam::{FlyCam, MovementSettings, NoCameraPlayerPlugin},
+    bevy_fly_cam::{FlyCamera, FlyCameraPlugin},
     bevy_plugin::{RonLoaderError, ShrubberyAsset},
     prelude::*,
     voxel::{DecorationSelector, LeafDecoration},
@@ -48,13 +48,9 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(ShrubberyPlugin)
         .add_plugins(ShrubberyDebugDrawPlugin)
-        .add_plugins(NoCameraPlayerPlugin)
+        .add_plugins(FlyCameraPlugin)
         .init_asset::<EditorVoxelColorMapAsset>()
         .init_asset_loader::<VoxelColorMapAssetLoader>()
-        .insert_resource(MovementSettings {
-            sensitivity: 0.00015,
-            speed: 64.0,
-        })
         .insert_resource(TreeSeed(0))
         .add_systems(Startup, (setup, setup_editor, spawn_ui))
         .add_systems(Update, open_file_picker_on_button)
@@ -168,7 +164,7 @@ fn setup(
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 90.5, 90.0).looking_at(Vec3::ZERO, Vec3::Y),
-        FlyCam,
+        FlyCamera::default(),
     ));
 
     commands.spawn((

@@ -1,205 +1,149 @@
-// THIS CODE IS BASED UPON: https://github.com/sburris0/bevy_flycam/tree/master
+//! Minimal fly camera plugin
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 
-/// Mouse sensitivity and movement speed
-#[derive(Resource)]
-pub struct MovementSettings {
-    pub sensitivity: f32,
-    pub speed: f32,
+pub struct FlyCameraPlugin;
+
+impl Plugin for FlyCameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<FlyCameraSettings>()
+            .init_resource::<FlyCameraKeybindings>()
+            .add_systems(Update, (sync_look_from_transform, look, movement).chain());
+    }
 }
 
-impl Default for MovementSettings {
+#[derive(Resource)]
+pub struct FlyCameraSettings {
+    pub mouse_sensitivity: f32,
+    pub move_speed: f32,
+}
+
+impl Default for FlyCameraSettings {
     fn default() -> Self {
         Self {
-            sensitivity: 0.00012,
-            speed: 12.,
+            mouse_sensitivity: 0.0015,
+            move_speed: 64.0,
         }
     }
 }
 
-/// Key configuration
 #[derive(Resource)]
-pub struct KeyBindings {
-    pub move_forward: KeyCode,
-    pub move_backward: KeyCode,
-    pub move_left: KeyCode,
-    pub move_right: KeyCode,
-    pub move_ascend: KeyCode,
-    pub move_descend: KeyCode,
-    pub toggle_grab_cursor: KeyCode,
+pub struct FlyCameraKeybindings {
+    pub forward: KeyCode,
+    pub backward: KeyCode,
+    pub left: KeyCode,
+    pub right: KeyCode,
+    pub up: KeyCode,
+    pub down: KeyCode,
+    pub sprint: KeyCode,
 }
 
-impl Default for KeyBindings {
+impl Default for FlyCameraKeybindings {
     fn default() -> Self {
         Self {
-            move_forward: KeyCode::KeyW,
-            move_backward: KeyCode::KeyS,
-            move_left: KeyCode::KeyA,
-            move_right: KeyCode::KeyD,
-            move_ascend: KeyCode::Space,
-            move_descend: KeyCode::ShiftLeft,
-            toggle_grab_cursor: KeyCode::Escape,
+            forward: KeyCode::KeyW,
+            backward: KeyCode::KeyS,
+            left: KeyCode::KeyA,
+            right: KeyCode::KeyD,
+            up: KeyCode::Space,
+            down: KeyCode::ShiftLeft,
+            sprint: KeyCode::ControlLeft,
         }
     }
 }
 
-/// Marker component for queryable fly cameras.
-#[derive(Component)]
-pub struct FlyCam;
+/// Marker + look-state for a fly camera entity.
+#[derive(Component, Default)]
+pub struct FlyCamera {
+    pub yaw: f32,
+    pub pitch: f32,
+}
 
-/// Grabs/ungrabs mouse cursor
-fn toggle_grab_cursor(mut primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
-    match primary_cursor_options.grab_mode {
-        CursorGrabMode::None => {
-            primary_cursor_options.grab_mode = CursorGrabMode::Confined;
-            primary_cursor_options.visible = false;
-        }
-        _ => {
-            primary_cursor_options.grab_mode = CursorGrabMode::None;
-            primary_cursor_options.visible = true;
-        }
+fn sync_look_from_transform(mut query: Query<(&Transform, &mut FlyCamera), Added<FlyCamera>>) {
+    for (transform, mut cam) in &mut query {
+        let forward = transform.forward();
+        cam.yaw = (-forward.x).atan2(-forward.z);
+        cam.pitch = forward.y.asin();
     }
 }
 
-/// Grabs the cursor when game first starts
-fn initial_grab_cursor(primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>) {
-    toggle_grab_cursor(primary_cursor_options);
-}
-
-/// Spawns the `Camera3dBundle` to be controlled
-fn setup_player(mut commands: Commands) {
-    commands.spawn((
-        Camera3d::default(),
-        FlyCam,
-        Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
-}
-
-/// Handles keyboard input and movement
-fn player_move(
+fn look(
+    settings: Res<FlyCameraSettings>,
+    mouse: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
-    settings: Res<MovementSettings>,
-    key_bindings: Res<KeyBindings>,
-    mut query: Query<(&FlyCam, &mut Transform)>, //    mut query: Query<&mut Transform, With<FlyCam>>,
+    mut cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
+    mut mouse_motion: MessageReader<MouseMotion>,
+    mut query: Query<(&mut Transform, &mut FlyCamera)>,
 ) {
-    for (_camera, mut transform) in query.iter_mut() {
-        let mut velocity = Vec3::ZERO;
-        let local_z = transform.local_z();
-        let forward = -Vec3::new(local_z.x, 0., local_z.z);
-        let right = Vec3::new(local_z.z, 0., -local_z.x);
-
-        for key in keys.get_pressed() {
-            match primary_cursor_options.grab_mode {
-                CursorGrabMode::None => (),
-                _ => {
-                    let key = *key;
-                    if key == key_bindings.move_forward {
-                        velocity += forward;
-                    } else if key == key_bindings.move_backward {
-                        velocity -= forward;
-                    } else if key == key_bindings.move_left {
-                        velocity -= right;
-                    } else if key == key_bindings.move_right {
-                        velocity += right;
-                    } else if key == key_bindings.move_ascend {
-                        velocity += Vec3::Y;
-                    } else if key == key_bindings.move_descend {
-                        velocity -= Vec3::Y;
-                    }
-                }
-            }
-        }
-
-        velocity = velocity.normalize_or_zero();
-
-        transform.translation += velocity * time.delta_secs() * settings.speed
+    if mouse.just_pressed(MouseButton::Left) {
+        cursor_options.grab_mode = CursorGrabMode::Locked;
+        cursor_options.visible = false;
     }
-}
-
-/// Handles looking around if cursor is locked
-fn player_look(
-    settings: Res<MovementSettings>,
-    primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
-    mut state: MessageReader<MouseMotion>,
-    mut query: Query<&mut Transform, With<FlyCam>>,
-) {
-    if let Ok(window) = primary_window.single() {
-        for mut transform in query.iter_mut() {
-            for ev in state.read() {
-                let (mut yaw, mut pitch, _) = transform.rotation.to_euler(EulerRot::YXZ);
-                match primary_cursor_options.grab_mode {
-                    CursorGrabMode::None => (),
-                    _ => {
-                        // Using smallest of height or width ensures equal vertical and horizontal sensitivity
-                        let window_scale = window.height().min(window.width());
-                        pitch -= (settings.sensitivity * ev.delta.y * window_scale).to_radians();
-                        yaw -= (settings.sensitivity * ev.delta.x * window_scale).to_radians();
-                    }
-                }
-
-                pitch = pitch.clamp(-1.54, 1.54);
-
-                // Order is important to prevent unintended roll
-                transform.rotation =
-                    Quat::from_axis_angle(Vec3::Y, yaw) * Quat::from_axis_angle(Vec3::X, pitch);
-            }
-        }
-    } else {
-        warn!("Primary window not found for `player_look`!");
+    if keys.just_pressed(KeyCode::Escape) {
+        cursor_options.grab_mode = CursorGrabMode::None;
+        cursor_options.visible = true;
     }
-}
 
-fn cursor_grab(
-    keys: Res<ButtonInput<KeyCode>>,
-    key_bindings: Res<KeyBindings>,
-    primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
-) {
-    if keys.just_pressed(key_bindings.toggle_grab_cursor) {
-        toggle_grab_cursor(primary_cursor_options);
-    }
-}
-
-// Grab cursor when an entity with FlyCam is added
-fn initial_grab_on_flycam_spawn(
-    query_added: Query<Entity, Added<FlyCam>>,
-    primary_cursor_options: Single<&mut CursorOptions, With<PrimaryWindow>>,
-) {
-    if query_added.is_empty() {
+    if cursor_options.grab_mode == CursorGrabMode::None {
+        mouse_motion.clear();
         return;
     }
 
-    toggle_grab_cursor(primary_cursor_options);
-}
+    let mut delta = Vec2::ZERO;
+    for ev in mouse_motion.read() {
+        delta += ev.delta;
+    }
+    if delta == Vec2::ZERO {
+        return;
+    }
 
-/// Contains everything needed to add first-person fly camera behavior to your game
-pub struct PlayerPlugin;
-impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        common_build(app);
-        app.add_systems(Startup, setup_player);
+    for (mut transform, mut cam) in &mut query {
+        cam.yaw -= delta.x * settings.mouse_sensitivity;
+        cam.pitch = (cam.pitch - delta.y * settings.mouse_sensitivity)
+            .clamp(-89f32.to_radians(), 89f32.to_radians());
+
+        transform.rotation =
+            Quat::from_axis_angle(Vec3::Y, cam.yaw) * Quat::from_axis_angle(Vec3::X, cam.pitch);
     }
 }
 
-/// Same as [`PlayerPlugin`] but does not spawn a camera
-pub struct NoCameraPlayerPlugin;
-impl Plugin for NoCameraPlayerPlugin {
-    fn build(&self, app: &mut App) {
-        common_build(app);
-    }
-}
+fn movement(
+    time: Res<Time>,
+    settings: Res<FlyCameraSettings>,
+    keybindings: Res<FlyCameraKeybindings>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut query: Query<&mut Transform, With<FlyCamera>>,
+) {
+    let mut dir = Vec3::ZERO;
+    for mut transform in &mut query {
+        if keys.pressed(keybindings.forward) {
+            dir += *transform.forward();
+        }
+        if keys.pressed(keybindings.backward) {
+            dir += *transform.back();
+        }
+        if keys.pressed(keybindings.left) {
+            dir += *transform.left();
+        }
+        if keys.pressed(keybindings.right) {
+            dir += *transform.right();
+        }
+        if keys.pressed(keybindings.up) {
+            dir += Vec3::Y;
+        }
+        if keys.pressed(keybindings.down) {
+            dir -= Vec3::Y;
+        }
 
-/// Common build steps for both PlayerPlugin and NoCameraPlayerPlugin
-fn common_build(app: &mut App) {
-    app.init_resource::<MovementSettings>()
-        .init_resource::<KeyBindings>()
-        .add_systems(Startup, initial_grab_cursor)
-        .add_systems(Startup, initial_grab_on_flycam_spawn)
-        .add_systems(Update, player_move)
-        .add_systems(Update, player_look)
-        .add_systems(Update, cursor_grab);
+        if dir != Vec3::ZERO {
+            dir = dir.normalize();
+            let speed = if keys.pressed(keybindings.sprint) {
+                settings.move_speed * 3.0
+            } else {
+                settings.move_speed
+            };
+            transform.translation += dir * speed * time.delta_secs();
+        }
+    }
 }
