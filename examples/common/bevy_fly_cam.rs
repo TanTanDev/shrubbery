@@ -1,4 +1,5 @@
 //! Minimal fly camera plugin
+//! Only exported for example code
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};

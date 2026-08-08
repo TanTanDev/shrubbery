@@ -12,8 +12,6 @@ pub use glam;
 #[cfg(feature = "bevy")]
 pub mod bevy_debug_draw;
 #[cfg(feature = "bevy")]
-pub mod bevy_fly_cam;
-#[cfg(feature = "bevy")]
 pub mod bevy_plugin;
 
 pub mod prelude {

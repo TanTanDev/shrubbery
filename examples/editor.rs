@@ -10,6 +10,9 @@
 //! loaded as a real bevy asset, so manual edits to it hot-reload through
 //! bevy's file watcher. Voxel names that needed a random preset are listed in
 //! the warning window at the bottom left.
+#[path = "common/bevy_fly_cam.rs"]
+mod bevy_fly_cam;
+use bevy_fly_cam::{FlyCamera, FlyCameraPlugin};
 
 use std::{
     f32::consts::PI,
@@ -27,7 +30,6 @@ use bevy::{
 use rand::{RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
 use shrubbery::{
-    bevy_fly_cam::{FlyCamera, FlyCameraPlugin},
     bevy_plugin::{RonLoaderError, ShrubberyAsset},
     prelude::*,
     voxel::{DecorationSelector, LeafDecoration},

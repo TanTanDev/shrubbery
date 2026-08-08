@@ -1,3 +1,7 @@
+#[path = "common/bevy_fly_cam.rs"]
+mod bevy_fly_cam;
+use bevy_fly_cam::{FlyCamera, FlyCameraPlugin};
+
 use std::f32::consts::PI;
 
 use bevy::{
@@ -7,11 +11,7 @@ use bevy::{
     prelude::*,
 };
 use rand::{RngExt, SeedableRng, seq::IndexedRandom};
-use shrubbery::{
-    bevy_fly_cam::{FlyCamera, FlyCameraPlugin},
-    bevy_plugin::ShrubberyAsset,
-    prelude::*,
-};
+use shrubbery::{bevy_plugin::ShrubberyAsset, prelude::*};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
