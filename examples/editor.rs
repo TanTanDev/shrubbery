@@ -10,23 +10,16 @@
 //! loaded as a real bevy asset, so manual edits to it hot-reload through
 //! bevy's file watcher. Voxel names that needed a random preset are listed in
 //! the warning window at the bottom left.
-#[path = "common/bevy_fly_cam.rs"]
-mod bevy_fly_cam;
-use bevy_fly_cam::{FlyCamera, FlyCameraPlugin};
+
+#[path = "common/scene_setup.rs"]
+mod scene_setup;
 
 use std::{
-    f32::consts::PI,
     path::{Path, PathBuf},
     time::SystemTime,
 };
 
-use bevy::{
-    asset::AssetLoader,
-    color::palettes::css::{WHITE, YELLOW},
-    light::CascadeShadowConfigBuilder,
-    prelude::*,
-    reflect::TypePath,
-};
+use bevy::{asset::AssetLoader, prelude::*, reflect::TypePath};
 use rand::{RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
 use shrubbery::{
@@ -50,11 +43,11 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(ShrubberyPlugin)
         .add_plugins(ShrubberyDebugDrawPlugin)
-        .add_plugins(FlyCameraPlugin)
+        .add_plugins(scene_setup::SceneSetupPlugin) // camera+lights+circular base is setup here
         .init_asset::<EditorVoxelColorMapAsset>()
         .init_asset_loader::<VoxelColorMapAssetLoader>()
         .insert_resource(TreeSeed(0))
-        .add_systems(Startup, (setup, setup_editor, spawn_ui))
+        .add_systems(Startup, (setup_editor, spawn_ui))
         .add_systems(Update, open_file_picker_on_button)
         .add_systems(Update, reload_file_on_disk_change)
         .add_systems(Update, sync_on_color_map_events)
@@ -62,7 +55,6 @@ fn main() {
         .add_systems(Update, sync_status_text)
         .add_systems(Update, sync_notice_ui)
         .add_systems(Update, update_seed_on_press)
-        .add_systems(Update, move_light)
         .run();
 }
 
@@ -146,9 +138,6 @@ pub struct Tree {
 }
 
 #[derive(Component)]
-pub struct RotatingLightTag;
-
-#[derive(Component)]
 struct StatusText;
 
 /// bottom-left warning window listing voxels without a color preset
@@ -158,61 +147,6 @@ struct NoticeWindow;
 #[derive(Component)]
 struct NoticeText;
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(0.0, 90.5, 90.0).looking_at(Vec3::ZERO, Vec3::Y),
-        FlyCamera::default(),
-    ));
-
-    commands.spawn((
-        Mesh3d(meshes.add(Circle::new(100.0))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-        Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-    ));
-
-    commands.insert_resource(AmbientLight {
-        color: WHITE.into(),
-        brightness: 600.0,
-        affects_lightmapped_meshes: true,
-    });
-
-    commands.spawn((
-        DirectionalLight {
-            illuminance: light_consts::lux::OVERCAST_DAY,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-PI / 4.),
-            ..default()
-        },
-        CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 4.0,
-            maximum_distance: 10.0,
-            ..default()
-        }
-        .build(),
-    ));
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-        PointLight {
-            shadows_enabled: true,
-            color: YELLOW.into(),
-            ..default()
-        },
-        Transform::from_xyz(4.0, 8.0, 4.0),
-        RotatingLightTag,
-    ));
-}
-
-/// loads the color map asset (creating the file on first run), derives the
 /// voxel registry, and spawns the (initially empty) tree entity
 fn setup_editor(mut commands: Commands, asset_server: Res<AssetServer>) {
     ensure_color_map_file_exists();
@@ -291,18 +225,6 @@ fn spawn_ui(mut commands: Commands) {
         TextColor(Color::BLACK),
         ChildOf(notice_window),
     ));
-}
-
-fn move_light(mut query: Query<&mut Transform, With<RotatingLightTag>>, time: Res<Time>) {
-    let speed = 5.0;
-    let rotation = time.elapsed_secs() * speed;
-    let quat = Quat::from_rotation_y(rotation);
-    let distance = 14.0;
-    let boom = Vec3::X * distance;
-    for mut transform in query.iter_mut() {
-        transform.translation = quat * boom;
-        transform.translation.y = 8.0;
-    }
 }
 
 fn update_seed_on_press(

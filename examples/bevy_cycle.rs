@@ -1,15 +1,7 @@
-#[path = "common/bevy_fly_cam.rs"]
-mod bevy_fly_cam;
-use bevy_fly_cam::{FlyCamera, FlyCameraPlugin};
+#[path = "common/scene_setup.rs"]
+mod scene_setup;
 
-use std::f32::consts::PI;
-
-use bevy::{
-    asset::LoadedFolder,
-    color::palettes::css::{BROWN, WHITE, YELLOW},
-    light::CascadeShadowConfigBuilder,
-    prelude::*,
-};
+use bevy::{asset::LoadedFolder, color::palettes::css::BROWN, prelude::*};
 use rand::{RngExt, SeedableRng};
 use shrubbery::{bevy_plugin::ShrubberyAsset, prelude::*};
 
@@ -54,7 +46,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(ShrubberyPlugin)
         .add_plugins(ShrubberyDebugDrawPlugin)
-        .add_plugins(FlyCameraPlugin)
+        .add_plugins(scene_setup::SceneSetupPlugin) // camera+lights+circular base is setup here
         .add_systems(Startup, setup)
         .add_systems(Startup, setup_assets)
         .add_systems(Startup, spawn_tree)
@@ -65,7 +57,7 @@ fn main() {
         .add_systems(Update, setup_tree_on_assets_loaded)
         .add_systems(Update, rebuild_tree_on_update)
         .add_systems(Update, update_seed_on_press)
-        .add_systems(Update, move_light)
+        // .add_systems(Update, move_light)
         .insert_resource(TreeSeed(0))
         .run();
 }
@@ -77,11 +69,7 @@ struct TreeAssetHandles(Vec<Handle<ShrubberyAsset>>);
 #[derive(Resource)]
 struct TreeSeed(pub u64);
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn setup(mut commands: Commands) {
     let voxel_materials: Vec<VoxelMaterial> = [
         ("bark_bright", BROWN),
         ("bark", BROWN.with_red(0.4)),
@@ -107,69 +95,69 @@ fn setup(
 
     commands.insert_resource(VoxelDefinitions(map));
     commands.insert_resource(voxel_materials);
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(0.0, 90.5, 90.0).looking_at(Vec3::ZERO, Vec3::Y),
-        FlyCamera::default(),
-    ));
+    // commands.spawn((
+    //     Camera3d::default(),
+    //     Transform::from_xyz(0.0, 90.5, 90.0).looking_at(Vec3::ZERO, Vec3::Y),
+    //     FlyCamera::default(),
+    // ));
 
-    commands.spawn((
-        Mesh3d(meshes.add(Circle::new(100.0))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-        Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-    ));
+    // commands.spawn((
+    //     Mesh3d(meshes.add(Circle::new(100.0))),
+    //     MeshMaterial3d(materials.add(Color::WHITE)),
+    //     Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
+    // ));
 
-    commands.insert_resource(AmbientLight {
-        color: WHITE.into(),
-        brightness: 600.0,
-        affects_lightmapped_meshes: true,
-    });
+    // commands.insert_resource(AmbientLight {
+    //     color: WHITE.into(),
+    //     brightness: 600.0,
+    //     affects_lightmapped_meshes: true,
+    // });
 
-    commands.spawn((
-        DirectionalLight {
-            illuminance: light_consts::lux::OVERCAST_DAY,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-PI / 4.),
-            ..default()
-        },
-        CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 4.0,
-            maximum_distance: 10.0,
-            ..default()
-        }
-        .build(),
-    ));
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-        PointLight {
-            shadows_enabled: true,
-            color: YELLOW.into(),
-            ..default()
-        },
-        Transform::from_xyz(4.0, 8.0, 4.0),
-        RotatingLightTag,
-    ));
+    // commands.spawn((
+    //     DirectionalLight {
+    //         illuminance: light_consts::lux::OVERCAST_DAY,
+    //         shadows_enabled: true,
+    //         ..default()
+    //     },
+    //     Transform {
+    //         translation: Vec3::new(0.0, 2.0, 0.0),
+    //         rotation: Quat::from_rotation_x(-PI / 4.),
+    //         ..default()
+    //     },
+    //     CascadeShadowConfigBuilder {
+    //         first_cascade_far_bound: 4.0,
+    //         maximum_distance: 10.0,
+    //         ..default()
+    //     }
+    //     .build(),
+    // ));
+    // commands.spawn((
+    //     Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+    //     MeshMaterial3d(materials.add(Color::WHITE)),
+    //     PointLight {
+    //         shadows_enabled: true,
+    //         color: YELLOW.into(),
+    //         ..default()
+    //     },
+    //     Transform::from_xyz(4.0, 8.0, 4.0),
+    //     RotatingLightTag,
+    // ));
 }
 
-fn move_light(mut query: Query<&mut Transform, With<RotatingLightTag>>, time: Res<Time>) {
-    let speed = 5.0;
-    let rotation = time.elapsed_secs() * speed;
-    let quat = Quat::from_rotation_y(rotation);
-    let distance = 14.0;
-    let boom = Vec3::X * distance;
-    for mut transform in query.iter_mut() {
-        transform.translation = quat * boom;
-        transform.translation.y = 8.0;
-    }
-}
+// fn move_light(mut query: Query<&mut Transform, With<RotatingLightTag>>, time: Res<Time>) {
+//     let speed = 5.0;
+//     let rotation = time.elapsed_secs() * speed;
+//     let quat = Quat::from_rotation_y(rotation);
+//     let distance = 14.0;
+//     let boom = Vec3::X * distance;
+//     for mut transform in query.iter_mut() {
+//         transform.translation = quat * boom;
+//         transform.translation.y = 8.0;
+//     }
+// }
 
-#[derive(Component)]
-pub struct RotatingLightTag;
+// #[derive(Component)]
+// pub struct RotatingLightTag;
 
 /// root entity holding tree voxels
 #[derive(Component)]
