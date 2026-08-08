@@ -5,11 +5,11 @@ Shrubbery is a procedural voxel generation library for rust projects.
 Features:
 * Serializable shaping logic
 * Built in space colonization implementation
-* Optional bevy integration 
 * Deterministic generation
-* Conifer shapes
-* Example/editor.rs is an "editor" that can preview any shrubbery.ron asset.
 
+## Integrate into any game
+This is my voxel game, utilizing shrubbery.ron assets.
+![voxel game integration](voxel_game_integration_preview.png)
 
 ## Example: "editor"
 The editor example code, can preview ANY shrubbery.ron asset. 
