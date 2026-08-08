@@ -10,7 +10,7 @@ use rand_chacha::ChaCha8Rng;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::{prelude::ShrubberyGenerator, shrubbery::ValueOrRangeF32};
+use crate::{prelude::ShrubberyGenerator, value_or_range::ValueOrRangeF32};
 const EPSILON: f32 = 0.0001;
 
 /// Logs through bevy when the `bevy` feature is on, otherwise to stderr —

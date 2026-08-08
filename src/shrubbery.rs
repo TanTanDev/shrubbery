@@ -3,8 +3,10 @@ use ahash::HashSet;
 
 use crate::{
     attractor::Attractor,
-    branch::{Branch, Filter, IterationFilter},
+    branch::Branch,
+    filter::{Filter, IterationFilter},
     shape::AttractorShape,
+    value_or_range::{ValueOrRangeF32, ValueOrRangeU32},
     voxel::{DecorationSelector, Shape, VoxelDefinitions},
 };
 
@@ -13,58 +15,6 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ValueOrRangeU32 {
-    Value(u32),
-    /// Inclusive `[min, max]`.
-    Range(u32, u32),
-}
-
-impl Default for ValueOrRangeU32 {
-    fn default() -> Self {
-        Self::Value(1)
-    }
-}
-
-impl ValueOrRangeU32 {
-    pub fn get(&self, rng: &mut ChaCha8Rng) -> u32 {
-        match self {
-            ValueOrRangeU32::Value(v) => *v,
-            ValueOrRangeU32::Range(min, max) => rng.random_range((*min).min(*max)..=*max),
-        }
-    }
-}
-
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ValueOrRangeF32 {
-    Value(f32),
-    /// Inclusive `[min, max]`.
-    Range(f32, f32),
-}
-
-impl Default for ValueOrRangeF32 {
-    fn default() -> Self {
-        Self::Value(1.0)
-    }
-}
-
-impl ValueOrRangeF32 {
-    pub fn max(&self) -> f32 {
-        match self {
-            ValueOrRangeF32::Value(v) => *v,
-            ValueOrRangeF32::Range(_, m) => *m,
-        }
-    }
-    pub fn get(&self, rng: &mut ChaCha8Rng) -> f32 {
-        match self {
-            ValueOrRangeF32::Value(v) => *v,
-            ValueOrRangeF32::Range(min, max) => rng.random_range((*min).min(*max)..=*max),
-        }
-    }
-}
 
 /// first iteration of a [`ShrubberyStep::Grow`]
 /// you may want to spawn multiple branches radially, example: palm leaves
@@ -195,13 +145,11 @@ impl BranchThickness {
             BranchThickness::IterationScale { min, max } => {
                 let min = min.get(rng);
                 let max = max.get(rng);
-
                 let t = if i_max <= 1 {
                     1.0
                 } else {
                     i as f32 / (i_max - 1) as f32
                 };
-
                 min + (max - min) * t
             }
         }
@@ -283,17 +231,13 @@ impl InitialDir {
     pub fn get(&self, rng: &mut ChaCha8Rng) -> Vec3 {
         match self {
             InitialDir::Value(dir) => dir.normalize(),
-
             InitialDir::Random {
                 y_rotation_range,
                 z_rotation_max,
             } => {
                 let yaw = (y_rotation_range.get(rng) as f32).to_radians();
-
                 let tilt = (z_rotation_max.get(rng) as f32).to_radians();
-
                 let horizontal = vec3(yaw.cos(), 0.0, yaw.sin());
-
                 (horizontal * tilt.sin() + Vec3::Y * tilt.cos()).normalize()
             }
         }

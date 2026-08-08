@@ -1,10 +1,8 @@
 use glam::Vec3;
 use shrubbery::{
-    branch::Filter,
     prelude::*,
-    shrubbery::{
-        BranchThickness, GrowStep, InitialDir, SpawnRootStep, ValueOrRangeF32, ValueOrRangeU32,
-    },
+    shrubbery::{BranchThickness, GrowStep, InitialDir, SpawnRootStep},
+    value_or_range::ValueOrRangeU32,
     voxel::{DecorationSelector, LeafDecoration},
 };
 
