@@ -10,9 +10,7 @@ use rand_chacha::ChaCha8Rng;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    math_utils::percent_in_range, prelude::ShrubberyGenerator, shrubbery::ValueOrRangeF32,
-};
+use crate::{prelude::ShrubberyGenerator, shrubbery::ValueOrRangeF32};
 const EPSILON: f32 = 0.0001;
 
 /// Logs through bevy when the `bevy` feature is on, otherwise to stderr —
@@ -248,7 +246,7 @@ impl LeafDecoration {
                             Axis::Y => (bounds_min.y, bounds_max.y, sample_pos.y),
                             Axis::Z => (bounds_min.z, bounds_max.z, sample_pos.z),
                         };
-                        percent_in_range(pos_v, low, high)
+                        ((pos_v - low) / (high - low)).clamp(0.0, 1.0)
                     }
                     LeafGradientSamplingMethod::IterationPercent => iteration_percent,
                 };

@@ -2,7 +2,6 @@
 
 pub mod attractor;
 pub mod branch;
-mod math_utils;
 pub mod shape;
 pub mod shrubbery;
 pub mod voxel;

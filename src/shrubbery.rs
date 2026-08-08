@@ -4,12 +4,11 @@ use ahash::HashSet;
 use crate::{
     attractor::Attractor,
     branch::{Branch, Filter, IterationFilter},
-    math_utils::rotate_point,
     shape::AttractorShape,
     voxel::{DecorationSelector, Shape, VoxelDefinitions},
 };
 
-use glam::{IVec3, Quat, Vec2, Vec3, ivec3, vec2, vec3};
+use glam::{IVec3, Quat, Vec3, ivec3, vec3};
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 #[cfg(feature = "serde")]
@@ -907,32 +906,6 @@ impl ShrubberyGenerator {
                 active_branches.into_iter().collect(),
                 id,
             );
-        }
-    }
-
-    /// Droop branches downward, scaled by horizontal distance from the root
-    /// so the canopy sags more than the trunk.
-    pub fn post_process_gravity(&mut self, gravity: f32) {
-        let plane_half_size = self.bounding_square_half();
-        for branch in self.branches.iter_mut() {
-            let dist_to_root = vec2(branch.pos.x, branch.pos.z).distance(Vec2::ZERO);
-            let weight = dist_to_root / plane_half_size;
-            branch.pos.y -= weight * gravity;
-        }
-    }
-
-    /// Twist branches around the Y axis, more strongly far from the root and
-    /// higher up, for a spiralling canopy.
-    pub fn post_process_spin(&mut self, spin_amount: f32) {
-        let plane_half_size = self.bounding_square_half();
-        for branch in self.branches.iter_mut() {
-            let branch_xz = vec2(branch.pos.x, branch.pos.z);
-            let dist_to_root = branch_xz.distance(Vec2::ZERO);
-            let weight = dist_to_root / plane_half_size;
-            let y_weight = (branch.pos.y * 0.3).cos() * 0.5 + 0.5;
-            let new_xz = rotate_point(branch_xz, spin_amount * weight * y_weight);
-            branch.pos.x = new_xz.x;
-            branch.pos.z = new_xz.y;
         }
     }
 
