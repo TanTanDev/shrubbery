@@ -1,3 +1,6 @@
+//! Bevy bridge, to make integrating Shrubbery easier via [`ShrubberyAsset`]
+//! and auto resolving the [`ShrubberyAsset`]'s voxel ids
+//! utilizing [`VoxelDefinitions`] as a Resource
 use std::ops::Deref;
 
 use ahash::HashSet;
@@ -11,6 +14,8 @@ use thiserror::Error;
 
 use crate::{shrubbery::ShrubberySettings, voxel::VoxelDefinitions};
 
+/// Bevy bridge, to load [`ShrubberyAsset`] and auto resolve their voxel ids
+/// utilizing [`VoxelDefinitions`] as a Resource
 pub struct ShrubberyPlugin;
 
 impl Plugin for ShrubberyPlugin {

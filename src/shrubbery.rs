@@ -1,3 +1,4 @@
+//! the core implementation for generating fine shrubberies
 use ahash::HashSet;
 
 use crate::{
@@ -66,6 +67,8 @@ impl ValueOrRangeF32 {
     }
 }
 
+/// first iteration of a [`ShrubberyStep::Grow`]
+/// you may want to spawn multiple branches radially, example: palm leaves
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BranchSpawnMethod {
@@ -76,6 +79,8 @@ pub enum BranchSpawnMethod {
     GrowRadial(GrowRadial),
 }
 
+/// data for [`BranchSpawnMethod::GrowRadial`]
+/// describes how to radially grow branches
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct GrowRadial {
@@ -116,12 +121,14 @@ pub enum ShrubberyStep {
     Shape(ShapeStep),
 }
 
+/// The core build instructions describing how to make a fine shrubbery
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ShrubberySettings {
     pub build_steps: Vec<ShrubberyStep>,
 }
 
+/// described what Id to assign a [`ShrubberyStep`]
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum AssignBranchId {
@@ -139,6 +146,8 @@ impl AssignBranchId {
     }
 }
 
+/// data for [`ShrubberyStep::Grow`]
+/// Describes how to grow branches
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(default))]
 pub struct GrowStep {
@@ -162,6 +171,7 @@ pub struct GrowStep {
     pub filter: Filter,
 }
 
+/// Describes how to select thickness value for [`Branch`]
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BranchThickness {
@@ -199,6 +209,7 @@ impl BranchThickness {
     }
 }
 
+/// describes what direction a branch should grow when executing [`ShrubberyStep::Grow`] commands
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BranchGrowthDirection {
@@ -215,6 +226,8 @@ pub enum BranchGrowthDirection {
     Attractor(AttractorSettings),
 }
 
+/// describes how attractors should behave in the space-colonization step
+/// used inside [`BranchGrowthDirection::Attractor`]
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(default))]
 pub struct AttractorSettings {
@@ -245,6 +258,7 @@ impl BranchGrowthDirection {
     }
 }
 
+/// the initial root direction [`SpawnRootStep`]
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum InitialDir {
@@ -286,6 +300,9 @@ impl InitialDir {
         }
     }
 }
+
+/// data for [`ShrubberyStep::SpawnRoot`]
+/// describes how to spawn root positions where [`Branch`] can grow from
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(default))]
 pub struct SpawnRootStep {
@@ -307,6 +324,7 @@ impl Default for SpawnRootStep {
     }
 }
 
+/// describes where to spawn attractor shape
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SpawnAttractorLocation {
@@ -314,6 +332,8 @@ pub enum SpawnAttractorLocation {
     FromBranch(FromBranchSettings),
 }
 
+/// data for [`SpawnAttractorLocation::FromBranch`]
+/// describes where to spawn the attractor shape, in relation to branch
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FromBranchSettings {
@@ -331,6 +351,8 @@ fn default_spawn_attractor_filter() -> Filter {
     }
 }
 
+/// data for [`ShrubberyStep::SpawnAttractors`]
+/// describes where/how attractors should spawn
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SpawnAttractors {

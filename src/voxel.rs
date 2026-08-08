@@ -1,3 +1,4 @@
+//! voxel id management
 use ahash::HashMap;
 
 #[cfg(feature = "bevy")]
@@ -77,6 +78,7 @@ impl VoxelDefinitions {
     }
 }
 
+/// the [`LeafDecoration::RandomSolid`] entry for randomizing voxel, weighted
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RandomVoxelEntry {
@@ -101,6 +103,7 @@ pub enum LeafGradientModulation {
     Wave { frequency: f32, amplitude: f32 },
 }
 
+/// Describes how [`LeafDecoration::Gradient`] should classify voxel selection
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum LeafGradientSamplingMethod {
@@ -126,6 +129,8 @@ pub struct LeafGradientSettings {
     pub steps: Vec<LeafGradientEntry>,
 }
 
+/// Entry explaining at what threshold to pick what voxel
+/// used by [`LeafGradientSettings`]
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LeafGradientEntry {
@@ -134,6 +139,7 @@ pub struct LeafGradientEntry {
     pub voxel: VoxelMapping,
 }
 
+/// Entry for [`DecorationSelector::RandomWeighted`]
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct WeightedDecorationEntry {
@@ -141,6 +147,7 @@ pub struct WeightedDecorationEntry {
     pub voxel: LeafDecoration,
 }
 
+/// Describes how to select voxel/s
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum DecorationSelector {
@@ -276,6 +283,7 @@ impl LeafDecoration {
     }
 }
 
+/// Describes a shape, to later be voxelized
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Shape {
@@ -284,6 +292,7 @@ pub enum Shape {
     StarLeaf(StarLeafShape),
 }
 
+/// the shape data of a [`Shape::StarLeaf`]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct StarLeafShape {

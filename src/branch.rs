@@ -1,3 +1,5 @@
+//! the core building block for all shapes
+//! Branch, could be also be though of as a "line"
 use glam::Vec3;
 
 use crate::shrubbery::BranchGrowthDirection;
@@ -83,6 +85,7 @@ fn default_true() -> bool {
     true
 }
 
+///! Decides what branches to operate on based upon different filtering criteria
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(default))]
 pub struct Filter {
@@ -128,6 +131,7 @@ impl Filter {
     }
 }
 
+///! Decides what branches to operate on based upon filtering the iteration value
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum IterationFilter {
@@ -151,6 +155,7 @@ impl IterationFilter {
     }
 }
 
+///! specify when to ignore/include a branch depending on the id value
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum IdFilter {

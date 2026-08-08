@@ -1,3 +1,4 @@
+//! attractor spawning shapes
 use glam::*;
 use rand::RngExt;
 use rand_chacha::ChaCha8Rng;
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{attractor::Attractor, shrubbery::AttractorSpacing};
 
+/// The shape that is used to spawn Attractors
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum AttractorShape {
