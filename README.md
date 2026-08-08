@@ -1,35 +1,76 @@
 # shrubbery
 <img src="shrubbery_logo.png" width="200" />
 
-rust library: Space colonization implementation, for generating trees / shrubbery, with built in voxelization utility.
+Shrubbery is a procedural voxel generation library for rust projects.
+Features:
+* Serializable shaping logic
+* Built in space colonization implementation
+* Optional bevy integration 
+* Deterministic generation
+* Conifer shapes
+* Example/editor.rs is an "editor" that can preview any shrubbery.ron asset.
 
-### example: "editor"
+
+## Example: "editor"
+The editor example code, can preview ANY shrubbery.ron asset. 
 ![editor preview](editor_preview.png)
 
-## Example code
+## Example code: minimal
 ```rs
-use shrubbery::prelude::*;
-
-// Settings describe the build steps; load from RON (see assets/shrubbery/)
-// or construct them in code.
-let settings: ShrubberySettings =
-    ron::de::from_str(&std::fs::read_to_string("oak.shrubbery.ron")?)?;
-
-// Generation is deterministic per seed.
-let mut generator = ShrubberyGenerator::generate(42, &settings);
-
-// Voxelize into (IVec3 grid position, VoxelId) pairs.
-let voxels = generator.voxelize();
+fn main() {
+    let shrubbery_settings = shrubbery_settings();
+    let seed = rand::random();
+    let mut generator = ShrubberyGenerator::generate(seed, &shrubbery_settings);
+    let voxels = generator.voxelize();
+}
 ```
 
-Runnable demos live in `examples/` (e.g. `cargo run --example bevy`).
+Runnable demos live in `examples/` (e.g. `cargo run --example bevy_cycle`).
+
+## How a shrubbery is designed
+Here is all shaping features:
+* Branch (3D lines with start + end point)
+* Shape::Sphere, spawned on branch end points
+* Shape::ConiferWhorl, segmented 4-star shape, placed along a branch's start-end point. Perfect for fir/pine trees.
+* Shape::Starleaf, a 4-star shape.
+
+You construct building steps, here is an example based upon: "Assets/oak.shrubbery.ron"
+```ron
+(
+    build_steps: [
+        SpawnRoot(( id: AssignId(0), )),
+        Grow((
+            times: Value(7),
+            length: Range(3.0, 5.0),
+            thickness: IterationScale(min: Value(3.0), max: Value(1.0),),
+            filter: (ignore_root: false),
+        )),
+        SpawnAttractors((
+            location: FromBranch(()),
+            shape: Cube((size_x: 25.0, size_y: 20.0, size_z: 25.0)),
+            attractor_spacing: AttractorSpacing(attractor_spacing: 6.0, jitter_ratio: 1.0),
+        )),
+        // spawn new branches using space colonization to fill the attractor space
+        Grow((
+            times: Value(3),
+            dir: Attractor(()),
+            length: Value(8.0),
+            filter: (id: Target(1)),
+        )),
+        Shape((
+            shape: Sphere(radius: Value(6.0)),
+            voxel: Value(Solid(VoxelMapping(name: "leaf_orange"))),
+            filter: (iteration: Greater(0)),
+    ],
+)
+```
 
 ## Feature flags
 
 | Feature | Default | Description |
 |---------|---------|-------------|
 | `serde` | ✓ | Serialization for settings and voxel definitions (RON, etc.) |
-| `bevy` | ✓ | Bevy integration: `.shrubbery.ron` asset loader, plugin, debug draw. Implies `serde` and pulls in `ron` |
+| `bevy` | ✓ | Bevy integration: `shrubbery.ron` asset loader, plugin, debug draw. Implies `serde` and pulls in `ron` |
 
 Minimal build: `cargo add shrubbery --no-default-features`.
 
