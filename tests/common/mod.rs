@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
-use shrubbery::{prelude::ShrubberySettings, voxel::VoxelId};
+use shrubbery_voxel::{prelude::ShrubberySettings, voxel::VoxelId};
 
 pub const ASSETS_DIR: &str = "assets/shrubbery";
 pub const GOLDEN_DIR: &str = "tests/golden_hashes";

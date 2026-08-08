@@ -1,5 +1,5 @@
 use glam::Vec3;
-use shrubbery::{
+use shrubbery_voxel::{
     prelude::*,
     shrubbery::{BranchThickness, GrowStep, InitialDir, SpawnRootStep},
     value_or_range::ValueOrRangeU32,

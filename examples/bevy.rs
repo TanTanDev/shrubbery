@@ -4,7 +4,7 @@ mod scene_setup;
 
 use bevy::{color::palettes::css::BROWN, prelude::*};
 use rand::{RngExt, SeedableRng};
-use shrubbery::{bevy_plugin::ShrubberyAsset, prelude::*};
+use shrubbery_voxel::{bevy_plugin::ShrubberyAsset, prelude::*};
 use std::time::Duration;
 
 #[repr(u8)]

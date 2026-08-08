@@ -6,7 +6,7 @@
 mod common;
 
 use common::{discover_assets, load_shrubbery_settings};
-use shrubbery::prelude::*;
+use shrubbery_voxel::prelude::*;
 
 /// Generating twice with the same seed must produce identical voxels.
 #[test]

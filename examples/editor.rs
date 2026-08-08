@@ -22,7 +22,7 @@ use std::{
 use bevy::{asset::AssetLoader, prelude::*, reflect::TypePath};
 use rand::{RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
-use shrubbery::{
+use shrubbery_voxel::{
     bevy_plugin::{RonLoaderError, ShrubberyAsset},
     prelude::*,
     voxel::{DecorationSelector, LeafDecoration},

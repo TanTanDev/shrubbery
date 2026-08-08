@@ -5,7 +5,7 @@ mod scene_setup;
 
 use bevy::{asset::LoadedFolder, color::palettes::css::BROWN, prelude::*};
 use rand::{RngExt, SeedableRng};
-use shrubbery::{bevy_plugin::ShrubberyAsset, prelude::*};
+use shrubbery_voxel::{bevy_plugin::ShrubberyAsset, prelude::*};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]

@@ -10,7 +10,7 @@ mod common;
 use common::{
     GOLDEN_DIR, GoldenHashEntry, GoldenHashFile, discover_assets, load_shrubbery_settings,
 };
-use shrubbery::prelude::*;
+use shrubbery_voxel::prelude::*;
 
 use crate::common::VoxelHasher;
 
