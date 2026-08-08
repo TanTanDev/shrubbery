@@ -25,8 +25,6 @@ fn main() {
 }
 ```
 
-Runnable demos live in `examples/` (e.g. `cargo run --example bevy_cycle`).
-
 ## How a shrubbery is designed
 Here is all shaping features:
 * Branch (3D lines with start + end point)
@@ -96,9 +94,6 @@ the golden hash test will fail until you regenerate and commit the goldens:
 ```sh
 cargo test --test generate_golden_hashes -- --ignored --nocapture
 ```
-
-Review the resulting diff carefully — a changed golden hash means the voxel
-output for that asset and seed changed.
 
 ## License
 
