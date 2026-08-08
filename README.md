@@ -72,6 +72,13 @@ You construct building steps, here is an example based upon: "Assets/oak.shrubbe
 | `serde` | ✓ | Serialization for settings and voxel definitions (RON, etc.) |
 | `bevy` | ✓ | Bevy integration: `shrubbery.ron` asset loader, plugin, debug draw. Implies `serde` and pulls in `ron` |
 
+
+## Bevy support table
+
+| bevy | shrubbery |
+|--------|---------|
+| 0.17.3 | 0.2     |
+
 Minimal build: `cargo add shrubbery --no-default-features`.
 
 ## Testing
