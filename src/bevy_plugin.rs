@@ -36,7 +36,7 @@ pub enum RonLoaderError {
     Ron(#[from] ron::error::SpannedError),
 }
 
-/// A loaded `*.shrubbery.ron` file, wrapping a [`ShrubberySettings`] recipe.
+/// A loaded `*.shrubbery.ron` file, wrapping a [`ShrubberySettings`].
 #[derive(Clone, Default, Debug, Asset, TypePath, Serialize, Deserialize)]
 #[cfg_attr(feature = "serde", serde(transparent))] // collapse the inner newtype
 pub struct ShrubberyAsset(pub ShrubberySettings);

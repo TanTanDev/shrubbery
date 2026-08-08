@@ -1,6 +1,4 @@
-//! Procedural voxel shape generation library, .
-//!
-//! See the `examples/` for usage with Bevy.
+//! Procedural voxel shape generation library.
 
 pub mod attractor;
 pub mod branch;

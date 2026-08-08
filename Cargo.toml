@@ -2,6 +2,10 @@
 name = "shrubbery"
 version = "0.2.0"
 edition = "2024"
+description = "Procedural voxel shape generation library"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["voxel", "procedural", "gamedev", "bevy"]
 
 [features]
 default = ["serde", "bevy"]

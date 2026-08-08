@@ -79,8 +79,6 @@ You construct building steps, here is an example based upon: "Assets/oak.shrubbe
 |--------|---------|
 | 0.17.3 | 0.2     |
 
-Minimal build: `cargo add shrubbery --no-default-features`.
-
 ## Testing
 
 ```sh

@@ -653,7 +653,6 @@ fn definitions_from_map(map: &EditorVoxelColorMapAsset) -> VoxelDefinitions {
     VoxelDefinitions(definitions)
 }
 
-/// every voxel name referenced by the recipe's decorations, sorted + unique
 fn collect_voxel_names(settings: &ShrubberySettings) -> Vec<String> {
     let mut names = Vec::new();
     for step in &settings.build_steps {

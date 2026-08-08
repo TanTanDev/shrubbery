@@ -98,7 +98,8 @@ impl Default for GrowRadial {
     }
 }
 
-/// One build step in a tree's growth recipe.
+/// The most fundamental building block
+/// Defines what action will be performed
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum ShrubberyStep {
@@ -473,10 +474,6 @@ pub enum IterationCalculation {
 }
 
 /// Working state for a single tree's procedural generation.
-///
-/// Build with [`ShrubberyGenerator::new`] (or the [`generate`][Self::generate]
-/// shortcut), run the recipe's steps, then call [`voxelize`][Self::voxelize] to
-/// produce the final voxel grid.
 pub struct ShrubberyGenerator {
     pub branches: Vec<Branch>,
     pub attractors: Vec<Attractor>,

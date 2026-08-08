@@ -355,12 +355,7 @@ type BranchMap = ahash::HashMap<IVec3, (f32, VoxelId)>;
 type VoxelMap = ahash::HashMap<IVec3, VoxelId>;
 
 impl ShrubberyGenerator {
-    /// Rasterize the generated branches and leaves into a flat set of voxels.
-    ///
-    /// Each voxel is `(grid_position, voxel_id)`. The grid is padded by the
-    /// largest leaf radius so leaves near the edge are never clipped.
-    /// Determinism is anchored to [`ShrubberyGenerator::seed`]; the same seed
-    /// and recipe always produce the same grid.
+    /// Rasterize the generated branches and shapes into a flat set of voxels.
     pub fn voxelize(&mut self) -> Vec<(IVec3, VoxelId)> {
         let (mut min_bounds, mut max_bounds) = self.bounds();
         let padding = leaf_padding(self);

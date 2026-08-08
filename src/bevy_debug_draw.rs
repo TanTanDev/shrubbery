@@ -1,8 +1,6 @@
-//! Debug gizmo rendering for [`ShrubberyAsset`] recipes.
+//! Debug gizmo rendering for [`ShrubberyAsset`].
 //!
-//! Attach [`ShrubberyDebugDraw`] to an entity to visualize its recipe's
-//! [`ShrubberyStep::SpawnRootBranch`], [`ShrubberyStep::SpawnAttractors`] and
-//! [`ShrubberyStep::SpawnAttractorOnBranches`] steps with gizmos. The recipe is
+//! Attach [`ShrubberyDebugDraw`] to an entity to visualize.
 //! replayed through a [`ShrubberyGenerator`] with the same seed, so the overlay
 //! matches the generated tree.
 
@@ -21,7 +19,7 @@ fn to_bevy_vec3(v: ShrubVec3) -> Vec3 {
     Vec3::from_array(v.to_array())
 }
 
-/// Gizmo debug rendering for shrubbery recipes. Add alongside
+/// Gizmo debug rendering for shrubbery settings. Add alongside
 /// [`crate::bevy_plugin::ShrubberyPlugin`], then attach [`ShrubberyDebugDraw`]
 /// to the entities you want overlays for.
 pub struct ShrubberyDebugDrawPlugin;
@@ -54,7 +52,7 @@ fn configure_gizmo_group(store: Option<ResMut<GizmoConfigStore>>) {
     config.depth_bias = -1.0;
 }
 
-/// Attach to an entity to draw debug gizmos for a [`ShrubberyAsset`] recipe.
+/// Attach to an entity to draw debug gizmos for a [`ShrubberyAsset`].
 ///
 /// `seed` must match the seed passed to [`ShrubberyGenerator::generate`] for
 /// the entity's voxels, or the overlay will diverge from the generated tree.
@@ -125,7 +123,7 @@ struct BranchDebug {
     start: Vec3,
     /// Position of this branch (segment end / tip).
     end: Vec3,
-    /// Index into the recipe's `build_steps` that produced this branch.
+    /// Index of the `build_steps` that produced this branch.
     step_index: usize,
 }
 
@@ -139,8 +137,7 @@ const STEP_PALETTE: &[(&str, Srgba)] = &[
     ("salmon", css::SALMON),
 ];
 
-/// Precomputed gizmo geometry for a [`ShrubberyDebugDraw`] entity, rebuilt by
-/// [`refresh_debug_caches`] whenever the component or its asset changes.
+/// Precomputed gizmo geometry for a [`ShrubberyDebugDraw`]
 #[derive(Component, Clone, Debug, Default)]
 pub struct ShrubberyDebugCache {
     root_branches: Vec<RootBranchDebug>,
@@ -160,9 +157,7 @@ fn step_name(step: &ShrubberyStep) -> &'static str {
     }
 }
 
-/// Replay the recipe step-by-step, capturing debug geometry as it is spawned.
-/// Executing with the same seed reproduces the generator's rng stream, so the
-/// captured positions match the real tree.
+/// "Replay" the ShrubberySettings step-by-step, capturing debug geometry as it is spawned.
 fn compute_debug_cache(seed: u64, settings: &ShrubberySettings) -> ShrubberyDebugCache {
     let mut generator = ShrubberyGenerator::new(seed);
     let mut cache = ShrubberyDebugCache::default();
