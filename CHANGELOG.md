@@ -1,3 +1,6 @@
+v0.3.0
+upgrade from bevy 0.17.3 to 0.19
+
 v0.2.0
 * large api rework
 * add serde feature 

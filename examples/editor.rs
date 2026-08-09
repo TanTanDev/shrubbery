@@ -386,7 +386,7 @@ fn sync_on_color_map_events(
         }
     }
     // emits AssetEvent::Modified, which rebuilds the tree + debug gizmos
-    if let Some(tree_asset) = tree_assets.get_mut(&current_file.handle) {
+    if let Some(mut tree_asset) = tree_assets.get_mut(&current_file.handle) {
         tree_asset.0.resolve_voxel_definitions(&voxel_definitions);
     }
 }
@@ -527,7 +527,7 @@ fn ensure_colors(
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0),
     );
-    let Some(map) = color_maps.get_mut(color_map_handle) else {
+    let Some(mut map) = color_maps.get_mut(color_map_handle) else {
         return Vec::new();
     };
     for name in &missing {
@@ -539,7 +539,7 @@ fn ensure_colors(
             blue: rng.random_range(0.2..=1.0),
         });
     }
-    save_color_map(map);
+    save_color_map(&map);
     missing
 }
 

@@ -40,7 +40,7 @@ fn shrubbery_settings() -> ShrubberySettings {
             ..Default::default()
         }),
     ];
-    let mut shrubbery_settings = ShrubberySettings::default();
-    shrubbery_settings.build_steps = steps.into_iter().collect();
-    shrubbery_settings
+    ShrubberySettings {
+        build_steps: steps.into_iter().collect(),
+    }
 }

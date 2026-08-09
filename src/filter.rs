@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::branch::Branch;
 
-///! Decides what branches to operate on based upon different filtering criteria
+/// Decides what branches to operate on based upon different filtering criteria
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(default))]
 pub struct Filter {
@@ -49,7 +49,7 @@ impl Filter {
     }
 }
 
-///! Decides what branches to operate on based upon filtering the iteration value
+/// Decides what branches to operate on based upon filtering the iteration value
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum IterationFilter {
@@ -73,7 +73,7 @@ impl IterationFilter {
     }
 }
 
-///! specify when to ignore/include a branch depending on the id value
+/// specify when to ignore/include a branch depending on the id value
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum IdFilter {

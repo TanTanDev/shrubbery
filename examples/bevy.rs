@@ -1,4 +1,4 @@
-///! the smallest implementation showcase
+//! the smallest implementation showcase
 #[path = "common/scene_setup.rs"]
 mod scene_setup;
 

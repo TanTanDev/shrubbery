@@ -70,7 +70,7 @@ pub enum ShrubberyStep {
 }
 
 /// The core build instructions describing how to make a fine shrubbery
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ShrubberySettings {
     pub build_steps: Vec<ShrubberyStep>,
@@ -399,14 +399,6 @@ impl ShrubberySettings {
     }
 }
 
-impl Default for ShrubberySettings {
-    fn default() -> Self {
-        Self {
-            build_steps: vec![],
-        }
-    }
-}
-
 /// describes how many attractors to spawn in shape
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -484,10 +476,9 @@ impl ShrubberyGenerator {
             .iter()
             .enumerate()
             .filter_map(|(i, branch)| {
-                let include = filter
+                filter
                     .should_include_branch(branch, self.last_known_id)
-                    .then_some(i);
-                include
+                    .then_some(i)
             })
             .collect()
     }
@@ -737,7 +728,7 @@ impl ShrubberyGenerator {
                     );
                 }
                 BranchSpawnMethod::GrowRadial(grow_radial) => {
-                    self.grow_radial(&grow_trunk, &grow_radial, decoration_index, times, id);
+                    self.grow_radial(grow_trunk, grow_radial, decoration_index, times, id);
                 }
             },
         }
@@ -864,7 +855,7 @@ impl ShrubberyGenerator {
                 attractors_count: 0,
                 original_dir: dir,
                 child_count: 0,
-                iteration: i as u32,
+                iteration: i,
                 leaf_group: None,
                 thickness: 1.0,
                 decoration_group: None,
