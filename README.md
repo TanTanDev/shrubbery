@@ -18,8 +18,8 @@ The editor example code, can preview ANY shrubbery.ron asset.
 ## Example code: minimal
 ```rs
 fn main() {
-    let shrubbery_settings = shrubbery_settings();
     let seed = rand::random();
+    let shrubbery_settings = shrubbery_settings();
     let mut generator = ShrubberyGenerator::generate(seed, &shrubbery_settings);
     let voxels = generator.voxelize();
 }
@@ -75,6 +75,7 @@ You construct building steps, here is an example based upon: "Assets/oak.shrubbe
 
 | bevy | shrubbery |
 |--------|---------|
+| 0.19   | 0.3     |
 | 0.17.3 | 0.2     |
 
 ## Testing
