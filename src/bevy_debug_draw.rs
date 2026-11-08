@@ -149,6 +149,7 @@ pub struct ShrubberyDebugCache {
 
 fn step_name(step: &ShrubberyStep) -> &'static str {
     match step {
+        ShrubberyStep::Repeat(_) => "RepeatStep",
         ShrubberyStep::SpawnRoot(_) => "SpawnRootBranch",
         ShrubberyStep::Grow(_) => "GrowDirection",
         ShrubberyStep::SpawnAttractors(_) => "SpawnAttractors",

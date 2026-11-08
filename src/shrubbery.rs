@@ -67,6 +67,9 @@ pub enum ShrubberyStep {
     /// Assign a leaf shape to branches
     /// Already assigned leaf groups are skipped unless `overwrite` is true
     Shape(ShapeStep),
+    /// Performs a given step multiple times
+    /// Acts as if the steps were copy pasted one after the other
+    Repeat(RepeatStep),
 }
 
 /// The core build instructions describing how to make a fine shrubbery
@@ -92,6 +95,17 @@ impl AssignBranchId {
             AssignBranchId::AssignId(id) => *id,
         }
     }
+}
+
+/// data for [`ShrubberyStep::Repeat`]
+/// Describes a repetition of ShrubberyStep
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct RepeatStep {
+    /// How many times to repeat
+    pub times: ValueOrRangeU32,
+    /// The step to repeat
+    pub step: Box<ShrubberyStep>,
 }
 
 /// data for [`ShrubberyStep::Grow`]
@@ -384,6 +398,12 @@ impl BranchOffsetDir {
 impl ShrubberySettings {
     pub fn resolve_voxel_definitions(&mut self, voxel_definitions: &VoxelDefinitions) {
         for step in self.build_steps.iter_mut() {
+            // Unwrap arbitrarily nested repeat to propagate voxel definitions
+            let mut step = step;
+            while let ShrubberyStep::Repeat(repeat) = step {
+                step = &mut *repeat.step;
+            }
+
             match step {
                 ShrubberyStep::Grow(grow_direction) => {
                     grow_direction.voxel.resolve(voxel_definitions);
@@ -393,7 +413,8 @@ impl ShrubberySettings {
                 }
                 ShrubberyStep::SpawnAttractors(_)
                 | ShrubberyStep::ClearAttractors
-                | ShrubberyStep::SpawnRoot(_) => (),
+                | ShrubberyStep::SpawnRoot(_)
+                | ShrubberyStep::Repeat(_) => (),
             }
         }
     }
@@ -497,6 +518,13 @@ impl ShrubberyGenerator {
 
     pub fn execute_step(&mut self, step: &ShrubberyStep) {
         match step {
+            ShrubberyStep::Repeat(repeat_step) => {
+                let count = repeat_step.times.get(&mut self.rng);
+
+                for _ in 0..count {
+                    self.execute_step(&repeat_step.step);
+                }
+            }
             ShrubberyStep::SpawnRoot(spawn_root_branch) => {
                 self.spawn_root_branch(spawn_root_branch);
             }
