@@ -398,11 +398,11 @@ impl BranchOffsetDir {
 impl ShrubberySettings {
     pub fn resolve_voxel_definitions(&mut self, voxel_definitions: &VoxelDefinitions) {
         for step in self.build_steps.iter_mut() {
-            // Unwrap exactly one level of repeat to propagate voxel definitions
-            let step = match step {
-                ShrubberyStep::Repeat(repeat) => &mut *repeat.step,
-                other => other,
-            };
+            // Unwrap arbitrarily nested repeat to propagate voxel definitions
+            let mut step = step;
+            while let ShrubberyStep::Repeat(repeat) = step {
+                step = &mut *repeat.step;
+            }
 
             match step {
                 ShrubberyStep::Grow(grow_direction) => {
